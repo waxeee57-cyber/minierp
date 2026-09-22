@@ -22,6 +22,10 @@ class ModuleBoundariesTest extends TestCase
             'Inventory nem függhet más modultól' => ['Inventory', ['Modules\\Orders\\', 'Modules\\Crm\\']],
             'Orders csak szerződésen át nyúl a készlethez' => ['Orders', ['Modules\\Inventory\\Models\\StockMovement', 'Modules\\Inventory\\Services\\']],
             'Orders csak szerződésen át ír az idővonalra' => ['Orders', ['Modules\\Crm\\Models\\Interaction', 'Modules\\Crm\\Services\\']],
+            'Az AI-asszisztens csak szerződéseken át olvas' => ['Assistant', ['Modules\\Crm\\Models', 'Modules\\Orders\\Models', 'Modules\\Inventory\\Models', 'Modules\\Crm\\Services', 'Modules\\Orders\\Services', 'Modules\\Inventory\\Services', 'Modules\\Orders\\Actions']],
+            'Az AI-asszisztens nem írhat (nincs készlet- és idővonal-írás)' => ['Assistant', ['Modules\\Inventory\\Contracts\\StockLedger', 'Modules\\Crm\\Contracts\\Timeline']],
+            'A számlázás nem nyúl a készlethez' => ['Invoicing', ['Modules\\Inventory\\']],
+            'Az Orders nem tud a számlázásról' => ['Orders', ['Modules\\Invoicing\\']],
         ];
     }
 

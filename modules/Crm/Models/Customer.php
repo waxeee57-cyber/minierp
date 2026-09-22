@@ -20,7 +20,10 @@ class Customer extends Model
         'email',
         'phone',
         'company',
+        'tax_number',
         'city',
+        'postal_code',
+        'address',
         'notes',
         'last_contacted_at',
     ];
@@ -40,5 +43,11 @@ class Customer extends Model
     public function openTasks(): HasMany
     {
         return $this->interactions()->where('type', InteractionType::Task)->whereNull('completed_at');
+    }
+
+    /** Adószámmal rendelkező belföldi cég-e (a számlázás ennek alapján dönt). */
+    public function isBusiness(): bool
+    {
+        return filled($this->tax_number);
     }
 }

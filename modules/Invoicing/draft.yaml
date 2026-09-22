@@ -1,0 +1,17 @@
+# Invoicing modul domain-modellje. Generálás: php artisan erp:blueprint Invoicing
+models:
+  Invoice:
+    number: string:30 unique
+    order_id: id foreign:orders unique
+    customer_id: id foreign:customers
+    issue_date: date
+    delivery_date: date
+    payment_due: date
+    net_total: unsignedBigInteger
+    vat_total: unsignedBigInteger
+    gross_total: unsignedBigInteger
+    lines: json
+    xml: longText
+    nav_status: enum:validated,invalid,submitted,storno_required default:validated
+    nav_error: text nullable
+    nav_transaction_id: string:40 nullable

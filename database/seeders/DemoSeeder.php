@@ -17,7 +17,8 @@ use Modules\Orders\Enums\OrderStatus;
  * Élethű bemutató adatok egy irodatechnikai nagykereskedéshez.
  * A rendeléseket a valódi PlaceOrder / TransitionOrder akciókon keresztül
  * hozza létre, így a készletmozgások és az idővonal is konzisztens.
- * Minden cég és személy kitalált.
+ * A fizetett rendelésekhez a számlázó modul automatikusan NAV 3.0 számlát állít ki.
+ * Minden cég, személy és adószám kitalált.
  */
 class DemoSeeder extends Seeder
 {
@@ -46,16 +47,17 @@ class DemoSeeder extends Seeder
         });
 
         $customers = collect([
-            ['Kovács Petra', 'petra.kovacs@napfenyiroda.example', 'Napfény Iroda Kft.', 'Székesfehérvár'],
-            ['Tóth Gábor', 'gabor.toth@dunapart-logisztika.example', 'Dunapart Logisztika Zrt.', 'Budapest'],
-            ['Szabó Eszter', 'eszter@zoldkert-epitesz.example', 'Zöldkert Építész Stúdió', 'Győr'],
-            ['Nagy Bence', 'bence.nagy@mecsek-auto.example', 'Mecsek Autóház Kft.', 'Pécs'],
-            ['Horváth Anna', 'anna@tiszavirag-hotel.example', 'Tiszavirág Hotel', 'Szeged'],
-            ['Varga Máté', 'mate.varga@bakony-bau.example', 'Bakony Bau Kft.', 'Veszprém'],
-            ['Kiss Dóra', 'dora.kiss@balaton-dental.example', 'Balaton Dental', 'Siófok'],
-            ['Molnár Ádám', 'adam@alfold-agro.example', 'Alföld Agro Zrt.', 'Kecskemét'],
+            ['Kovács Petra', 'petra.kovacs@napfenyiroda.example', 'Napfény Iroda Kft.', 'Székesfehérvár', '8000', 'Palotai út 12.', '10000001-2-07'],
+            ['Tóth Gábor', 'gabor.toth@dunapart-logisztika.example', 'Dunapart Logisztika Zrt.', 'Budapest', '1097', 'Gubacsi út 6.', '10000002-2-43'],
+            ['Szabó Eszter', 'eszter@zoldkert-epitesz.example', 'Zöldkert Építész Stúdió', 'Győr', '9021', 'Baross Gábor út 3.', '10000003-2-08'],
+            ['Nagy Bence', 'bence.nagy@mecsek-auto.example', 'Mecsek Autóház Kft.', 'Pécs', '7630', 'Hengermalom utca 2.', '10000004-2-02'],
+            ['Horváth Anna', 'anna@tiszavirag-hotel.example', 'Tiszavirág Hotel', 'Szeged', '6720', 'Kárász utca 9.', '10000005-2-06'],
+            ['Varga Máté', 'mate.varga@bakony-bau.example', 'Bakony Bau Kft.', 'Veszprém', '8200', 'Házgyári út 4.', '10000006-2-19'],
+            ['Kiss Dóra', 'dora.kiss@balaton-dental.example', 'Balaton Dental', 'Siófok', '8600', 'Fő utca 45.', '10000007-1-14'],
+            ['Molnár Ádám', 'adam@alfold-agro.example', 'Alföld Agro Zrt.', 'Kecskemét', '6000', 'Kiskőrösi út 30.', '10000008-2-03'],
         ])->map(fn ($c) => Customer::create([
             'name' => $c[0], 'email' => $c[1], 'company' => $c[2], 'city' => $c[3],
+            'postal_code' => $c[4], 'address' => $c[5], 'tax_number' => $c[6],
             'phone' => '+36 30 '.mt_rand(100, 999).' '.mt_rand(1000, 9999),
         ]));
 
