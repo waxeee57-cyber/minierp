@@ -1,192 +1,212 @@
-# Mini-ERP · moduláris Laravel
+# Mini-ERP · moduláris Laravel 13
 
-Rendelés-, készlet- és ügyfélkezelő rendszer egy kitalált irodatechnikai nagykereskedés számára. Három önálló modulból áll, REST API-n kommunikál egy Vue.js felülettel, ütemezett feladatokat futtat, és AI-val foglalja össze az ügyfelek helyzetét.
+Rendelés-, készlet-, ügyfél- és számlakezelő rendszer egy kitalált irodatechnikai nagykereskedésnek. Öt önálló modulból áll:
 
-> Munkaminta az XTRADEVELOPERS Kft. Fullstack fejlesztő pozíciójára. Szilágyi Roland · waxeee57@gmail.com
+- **NAV Online Számla 3.0 XML-t állít ki**, a hivatalos XSD-vel ellenőrizve.
+- **Előre jelzi, mi fogy ki**, és mennyit kell rendelni.
+- **Természetes nyelven kérdezhető** a Laravel hivatalos AI SDK-ján keresztül.
 
-![Bemutató: rendelés leadása, állapotváltás, ügyfél-idővonal, készlet](docs/demo.gif)
+> Munkaminta az XTRADEVELOPERS Kft. Fullstack fejlesztő pozíciójára · Szilágyi Roland · waxeee57@gmail.com
+
+![Bemutató: rendelés, fizetés után automatikus NAV-számla, készlet-előrejelzés, ügyfél-idővonal](docs/demo.gif)
 
 ## Röviden
 
 | | |
 |---|---|
 | **Stack** | Laravel 13 · PHP 8.4 · Vue 3 · Vite · Tailwind CSS 4 · SQLite / MySQL / PostgreSQL |
-| **Architektúra** | 3 modul (`modules/Crm`, `modules/Inventory`, `modules/Orders`), mindegyik saját ServiceProviderrel, route-okkal, migrációkkal |
-| **Domain-modell** | Modulonként `draft.yaml`, [Laravel Blueprint](https://blueprint.laravelshift.com)-tel generálva |
+| **Modulok** | `Crm` · `Inventory` · `Orders` · `Invoicing` · `Assistant`, mindegyik saját ServiceProviderrel, route-okkal, migrációkkal |
+| **Domain-modell** | Modulonként `draft.yaml`, [Laravel Blueprint](https://blueprint.laravelshift.com)-tel, modulra szabott generátorral |
 | **Adatbázis-diagram** | [`recca0120/laravel-erd`](https://github.com/recca0120/laravel-erd), `composer erd` |
-| **Tesztek** | 42 teszt, 292 assertion: feature, unit, modulhatár- és 300 lépéses invariáns-teszt. CI: GitHub Actions + Pint |
-| **Ütemezés** | Napi készletriasztás és ügyfél-utókövetés a Laravel Schedulerrel |
-| **AI** | Ügyfél-összefoglaló a Claude API-val, kulcs nélkül vagy hiba esetén szabályalapú tartalékkal |
+| **Magyar számlázás** | NAV Online Számla 3.0 `InvoiceData` XML, offline XSD-validálással ([`pzs/nav-online-invoice`](https://github.com/pzs/nav-online-invoice)) |
+| **AI** | [Laravel AI SDK](https://laravel.com/ai) (`laravel/ai`): eszközhasználó ERP-asszisztens és strukturált kimenetű ügyfél-összefoglaló, szolgáltató-függetlenül |
+| **Előrejelzés** | Kifogyási dátum és javasolt rendelési mennyiség a készletmozgás-naplóból, prediktív riasztással |
+| **Tesztek** | 65 teszt, 504 assertion: feature, unit, modulhatár- és 300 lépéses invariáns-teszt. CI: GitHub Actions + Pint |
 
 ## Indítás
 
 ```bash
 git clone https://github.com/waxeee57-cyber/mini-erp.git && cd mini-erp
-composer setup            # függőségek, .env, kulcs, migráció, frontend build
-php artisan db:seed       # bemutató adatok: 12 termék, 8 ügyfél, ~40 rendelés
+composer setup            # függőségek, .env, kulcs, SQLite, migráció, frontend build
+php artisan db:seed       # 12 termék, 8 ügyfél, ~40 rendelés, a fizetettekhez NAV-számlával
 php artisan serve         # http://localhost:8000
 ```
 
-Tesztek: `composer test` · Kódstílus: `composer lint` · ERD újragenerálása: `composer erd`
+Tesztek: `composer test` · Kódstílus: `composer lint` · ERD: `composer erd`
+
+Az AI-funkciókhoz elég egy kulcs a `.env`-ben (`ANTHROPIC_API_KEY=…`). Kulcs nélkül minden más működik, az ügyfél-összefoglaló pedig szabályalapúra vált.
 
 ## 5 perc alatt a kódban
 
-Ha csak pár fájlt nézel meg, ezeket érdemes:
+1. [`modules/Orders/Actions/PlaceOrder.php`](modules/Orders/Actions/PlaceOrder.php): rendelés leadása egy tranzakcióban, készletfoglalással.
+2. [`modules/Inventory/Services/EloquentStockLedger.php`](modules/Inventory/Services/EloquentStockLedger.php): soronkénti zárolás; minden készletváltozás naplózva.
+3. [`modules/Invoicing/Services/NavInvoiceXmlBuilder.php`](modules/Invoicing/Services/NavInvoiceXmlBuilder.php) és [`NavSchemaValidator.php`](modules/Invoicing/Services/NavSchemaValidator.php): NAV 3.0 XML, cégnek és magánszemélynek.
+4. [`modules/Assistant/Ai/ErpAssistant.php`](modules/Assistant/Ai/ErpAssistant.php): AI-ügynök, csak olvasó eszközökkel.
+5. [`modules/Inventory/Services/MovementBasedForecast.php`](modules/Inventory/Services/MovementBasedForecast.php): magyarázható kifogyási előrejelzés.
+6. [`tests/Architecture/ModuleBoundariesTest.php`](tests/Architecture/ModuleBoundariesTest.php): a modulhatárok automatikus őre.
 
-1. [`modules/Orders/Actions/PlaceOrder.php`](modules/Orders/Actions/PlaceOrder.php): a rendelés leadása egy tranzakcióban, készletfoglalással.
-2. [`modules/Inventory/Services/EloquentStockLedger.php`](modules/Inventory/Services/EloquentStockLedger.php): soronkénti zárolás, és minden készletváltozás naplózva.
-3. [`modules/Orders/Enums/OrderStatus.php`](modules/Orders/Enums/OrderStatus.php): az állapotgép.
-4. [`modules/Crm/Contracts/OrderHistory.php`](modules/Crm/Contracts/OrderHistory.php): hogyan kap adatot a CRM az Orders modulból úgy, hogy nem függ tőle.
-5. [`tests/Feature/Inventory/LedgerInvariantTest.php`](tests/Feature/Inventory/LedgerInvariantTest.php): 300 véletlen művelet után is pontosan egyezik a készlet a mozgásnaplóval.
-6. [`app/Console/Commands/ModuleBlueprintCommand.php`](app/Console/Commands/ModuleBlueprintCommand.php): a Blueprint modulra szabva.
+## Modulok és határaik
 
-## Modulok
-
-A modulok a [moduláris Laravel](https://xtradevs.com/hu/blogok/laravel-modularizacio-az-alkalmazas-fejlesztes-alternativ-utja) mintát követik: `modules/` mappa, `Modules\` névtér a `composer.json`-ban, és minden modul egy „mini Laravel-app”. A provider tölti be a migrációkat (`loadMigrationsFrom`) és a route-okat, regisztrálja a parancsokat és az ütemezést. A providerek a Laravel 11+ szerinti helyen, a `bootstrap/providers.php`-ban vannak regisztrálva.
-
-```
-modules/Orders
-├── Actions/            PlaceOrder, TransitionOrder – az üzleti logika egy helyen
-├── Database/
-│   ├── Factories/
-│   └── migrations/
-├── Enums/              OrderStatus – állapotgép az engedélyezett átmenetekkel
-├── Events/  Listeners/
-├── Http/               Controllers, Requests (validáció), Resources (API-válasz)
-├── Models/
-├── Providers/OrdersServiceProvider.php
-├── Services/
-├── routes/api.php
-└── draft.yaml          a modul domain-modellje (Blueprint)
-```
-
-### Hogyan beszélnek egymással a modulok
+A modulok a [moduláris Laravel](https://xtradevs.com/hu/blogok/laravel-modularizacio-az-alkalmazas-fejlesztes-alternativ-utja) mintát követik: `modules/` mappa, `Modules\` névtér, és minden modul egy „mini Laravel-app”. A provider tölti be a migrációkat, a route-okat, a parancsokat és az ütemezést. A providerek a Laravel 11+ szerinti `bootstrap/providers.php`-ban vannak regisztrálva.
 
 ```mermaid
 flowchart LR
     subgraph Orders
         PO[PlaceOrder / TransitionOrder]
-        OH[EloquentOrderHistory]
-        L[WriteOrderToCustomerTimeline]
+        SR{{SalesReport}}
     end
     subgraph Inventory
-        SL{{StockLedger<br/>szerződés}}
+        SL{{StockLedger}}
+        DF{{DemandForecast}}
     end
     subgraph Crm
-        TL{{Timeline<br/>szerződés}}
-        OHC{{OrderHistory<br/>szerződés}}
-        SUM[Ügyfél-összefoglaló]
-        FU[crm:follow-ups]
+        TL{{Timeline}}
+        OH{{OrderHistory}}
+        CD{{CustomerDirectory}}
+    end
+    subgraph Invoicing
+        II[IssueInvoice → NAV 3.0 XML + XSD]
+    end
+    subgraph Assistant
+        AI[ErpAssistant · Laravel AI SDK]
     end
     PO -- készletfoglalás --> SL
-    PO -- OrderPlaced esemény --> L -- idővonal-bejegyzés --> TL
-    OH -. megvalósítja .-> OHC
-    SUM --> OHC
-    FU --> OHC
+    PO -- esemény --> TL
+    Orders -. megvalósítja .-> OH
+    PO -- OrderStatusChanged --> II
+    AI --> CD & SR & DF
 ```
 
-- **Az Orders a készlethez csak a `StockLedger` szerződésen át nyúl**, a `stock_movements` táblát soha nem írja közvetlenül.
-- **A CRM nem függ az Orders modultól.** A CRM definiálja az `OrderHistory` interfészt, az Orders pedig megvalósítja (függőség-megfordítás). Így a CRM önállóan is tesztelhető és cserélhető.
-- **A határokat teszt őrzi.** A `tests/Architecture/ModuleBoundariesTest.php` elbukik, ha egy modul átnyúl a másikba.
+- **Az Orders a készlethez csak a `StockLedger` szerződésen át nyúl**, a táblákat soha nem írja közvetlenül.
+- **A CRM nem függ az Orders modultól.** A CRM definiálja az `OrderHistory` interfészt, az Orders pedig megvalósítja (függőség-megfordítás).
+- **A számlázás eseményre reagál.** Az Orders modul nem tud a számlázásról, így ki-be kapcsolható.
+- **Az AI-asszisztens csak szerződéseken át olvas, és nem írhat.** Nem fér hozzá a `StockLedger`-hez és a `Timeline`-hoz.
+- Mindezt a [`ModuleBoundariesTest`](tests/Architecture/ModuleBoundariesTest.php) kényszeríti ki. Ha valaki átnyúl egy határon, a CI piros lesz.
 
-## Amire figyeltem
+## Számlázás: NAV Online Számla 3.0
 
-**Pénz és készlet konzisztenciája**
-- Egy rendelés leadása egyetlen DB-tranzakció. Ha bármelyik tételből nincs elég, semmi nem íródik le, az előző tételek foglalása sem (tesztelve).
+Fizetett állapotba lépéskor az `Invoicing` modul automatikusan számlát állít ki:
+
+- **Hézagmentes éves sorszám** (`SZ-2026-00001`), zárolással, tranzakción belül.
+- **Tételenként kerekített 27% ÁFA.** Az összesítő a tételek összege, így a számla mindig belsőleg egyezik.
+- **`InvoiceData` XML** a NAV 3.0 séma szerint:
+  - Belföldi cégnél adószámmal, névvel és címmel (`DOMESTIC`).
+  - Magánszemélynél a 3.0-s szabály szerint név és cím nélkül (`PRIVATE_PERSON`).
+- **Offline XSD-validálás a NAV hivatalos sémafájljaival.** A hibás számla `invalid` állapotba kerül, és soha nem indul el a NAV felé.
+  - Példa: fejlesztés közben a validátor fogta meg, hogy a NAV termékkódja csak `[A-Z0-9]` lehet, így az `IT-1001` cikkszámból `IT1001` lesz.
+- **Lemondás fizetés után:** a számla nem törlődik, hanem `storno_required` állapotba kerül.
+- **A beküldés** (`php artisan invoicing:submit`) technikai felhasználóval működik, alapból a NAV teszt-környezetébe. Hitelesítő adat nélkül biztonságosan nem csinál semmit. *A demó ezt a lépést nem futtatja; az ellenőrzés az XSD-ig tart.*
+
+Végpontok: `GET /api/invoicing/invoices` · `GET /api/invoicing/invoices/{id}` · `GET /api/invoicing/invoices/{id}/xml`
+
+## Kifogyási előrejelzés
+
+A [`MovementBasedForecast`](modules/Inventory/Services/MovementBasedForecast.php) szándékosan egyszerű és ellenőrizhető:
+
+```
+napi kereslet      = (eladás − visszavét) az elmúlt 30 napban / 30
+kitart             = készlet / napi kereslet
+javasolt rendelés  = napi kereslet × (átfutás + biztonsági napok) − készlet
+```
+
+- **A riasztás prediktív:** az `inventory:low-stock-alert` nem csak azt jelzi, ami már a minimum alatt van, hanem azt is, ami a beszerzési átfutáson belül kifogy.
+- A paraméterek `.env`-ből állíthatók (`ERP_FORECAST_WINDOW_DAYS`, `ERP_LEAD_TIME_DAYS`, `ERP_SAFETY_DAYS`).
+- Végpont: `GET /api/inventory/forecast`
+
+## AI: Laravel AI SDK
+
+**ERP-asszisztens** (`POST /api/assistant/ask`): egy [`ErpAssistant`](modules/Assistant/Ai/ErpAssistant.php) ügynök, 5 csak olvasó eszközzel.
+
+- **Az eszközök:** `FindCustomer`, `CustomerProfile`, `SalesSummary`, `StockOutlook` és `OpenTasks`.
+- **Tipikus kérdések:** „Mi fogy ki a következő 7 napban, és mennyit rendeljek?”, „Ki volt a legjobb ügyfelünk az elmúlt 30 napban?”
+- **Az utasítások tiltják a kitalálást**, és az eszközök nem adnak ki e-mail-címet vagy telefonszámot (tesztelve).
+
+**Ügyfél-összefoglaló** ([`CustomerBriefAgent`](modules/Crm/Ai/CustomerBriefAgent.php)):
+
+- **Strukturált kimenet** (`summary`, `next_action`), így a felület nem szabad szöveget értelmez.
+- **Bármilyen hibánál szabályalapú tartalék.** Az eredmény addig van cache-elve, amíg az ügyfél idővonala nem változik.
+
+**Közös tulajdonságok:**
+
+- **Szolgáltató-függetlenség:** a szolgáltatót egy env-változó váltja (`ERP_AI_PROVIDER=anthropic|openai|gemini|…`).
+- **Rate limit:** mindkét AI-végpont saját limitet kap (`throttle:ai`).
+- **Tesztelés API-kulcs nélkül:** az SDK hivatalos fake-jeivel (`ErpAssistant::fake()`, `assertPrompted()`), az eszközöket pedig valós adaton, közvetlenül hívva.
+
+## Amire még figyeltem
+
+**Konzisztencia**
+- A rendelés leadása egyetlen DB-tranzakció. Ha bármelyik tételből nincs elég, semmi nem íródik le.
 - A foglalás `lockForUpdate`-tel zárolja a termék sorát, így két párhuzamos rendelés nem tudja eladni ugyanazt az utolsó darabot.
-- A készlet minden változása egy `stock_movements` sor. A termék készlete mindig a mozgások összege, ezt a tesztek ellenőrzik.
-- **Invariáns-teszt:** 300 véletlen bevételezés, rendelés, fizetés és lemondás után sem negatív a készlet. Pontosan egyezik a mozgásnaplóval, és minden rendelés végösszege egyezik a tételei összegével.
-- Az összegek egész forintban, `unsignedInteger`-ként vannak tárolva, lebegőpontos kerekítési hiba nélkül.
-- A rendelési tétel lemásolja a termék nevét és árát. Egy későbbi árváltozás nem írja át a régi rendeléseket.
+- **Invariáns-teszt:** 300 véletlen művelet után sem negatív a készlet, pontosan egyezik a mozgásnaplóval, és minden rendelés végösszege egyezik a tételei összegével.
+- Pénz egész forintban; a tétel lemásolja a rendeléskori nevet és árat.
 
 **Állapotgép**
-- `OrderStatus` enum: *függőben → fizetve → kiszállítva*, lemondani a kiszállításig lehet. Az engedélyezett átmenetek egy helyen vannak definiálva, az API és a felület is ebből dolgozik.
-- Érvénytelen átmenetnél 422-es válasz jön az engedélyezett lépések listájával.
-- Lemondáskor a lefoglalt készlet automatikusan visszakerül a raktárba. Dupla lemondásnál nincs dupla visszavételezés.
+- `OrderStatus` enum: *függőben → fizetve → kiszállítva*, lemondás a kiszállításig.
+- Lemondáskor a készlet automatikusan visszakerül a raktárba. Dupla lemondásnál nincs dupla visszavételezés.
 
 **Biztonság**
-- Minden bemenet FormRequestben validálva, `$fillable` mezőkkel.
-- Eladást és rendelés-bejegyzést kézzel nem lehet rögzíteni, csak a rendelési folyamat hozhatja létre.
-- Az AI-végpont saját rate limitet kap (`throttle:ai`).
-- Az AI csak strukturált összesítőt kap, e-mail-címet és telefonszámot nem (tesztelve).
-- `Model::shouldBeStrict()` fejlesztés közben: az N+1 lekérdezés és az elgépelt attribútum azonnal kivételt dob.
+- FormRequest-validáció mindenhol, és `$fillable` mezők.
+- Eladást, rendelés-bejegyzést és számlát kézzel nem lehet rögzíteni.
+- Adószám-formátum ellenőrzése.
+- `Model::shouldBeStrict()` fejlesztés közben.
+
+**Ütemezés**
+- A napi feladatok `withoutOverlapping()` és `onOneServer()` beállítással futnak, így több szerveren sem futnak duplán.
+
+| Parancs | Mikor | Mit csinál |
+|---|---|---|
+| `inventory:low-stock-alert` | hétköznap 07:00 | Prediktív készletriasztás javasolt rendelési mennyiséggel |
+| `crm:follow-ups` | naponta 08:00 | Utókövetési teendő, ha egy ügyfél X napja nem rendelt. Idempotens. |
+| `invoicing:submit` | igény szerint | XSD-validált számlák beküldése a NAV-nak (csak beállított technikai felhasználóval) |
 
 ## Blueprint modulokra szabva
 
-A Blueprint alapból az `app/` és a `database/` mappába generál. Írtam hozzá egy parancsot, amely modulra szabva futtatja:
-
 ```bash
-php artisan erp:blueprint Orders
+php artisan erp:blueprint Invoicing
 ```
 
-A parancs a `modules/Orders/draft.yaml`-ből dolgozik. A modelleket a modul névterébe generálja, a migrációkat és a factory-ket átmozgatja a modul `Database` mappájába, és a `timestamp` castokat `datetime`-ra javítja. A generált vázat utána kézzel egészítettem ki üzleti logikával, enumokkal és kapcsolatokkal. Forrás: [`app/Console/Commands/ModuleBlueprintCommand.php`](app/Console/Commands/ModuleBlueprintCommand.php)
+A parancs a modul `draft.yaml`-jéből a modul névterébe generál modellt, migrációt és factory-t. A `timestamp` castokat `datetime`-ra javítja, és a `database/` mappában nem hagy szemetet (tesztelve). Az `Invoicing` modul váza is így készült.
 
 ## Adatbázis
 
 ![ERD](docs/erd.png)
-
-## Ütemezett feladatok
-
-| Parancs | Mikor | Mit csinál |
-|---|---|---|
-| `inventory:low-stock-alert` | hétköznap 07:00 | E-mailt küld a raktárnak az újrarendelési szint alá esett aktív termékekről |
-| `crm:follow-ups` | naponta 08:00 | Utókövetési teendőt hoz létre, ha egy ügyfél X napja nem rendelt, és azóta senki nem kereste. Idempotens, nem duplikál. |
-
-Mindkét feladat `withoutOverlapping()` és `onOneServer()` beállítással fut, így több alkalmazásszerveren sem fut duplán. Élesben ehhez egyetlen cron-sor kell: `* * * * * php artisan schedule:run`.
-
-## AI-összefoglaló
-
-`GET /api/crm/customers/{id}/summary`
-
-- Az ügyfél adatlapján egy-két mondatos helyzetkép jelenik meg, egy javasolt következő lépéssel.
-- **Claude API**, ha az `ANTHROPIC_API_KEY` és az `ANTHROPIC_MODEL` be van állítva. A prompt tiltja a kitalálást, és csak a kapott tényekből dolgozhat.
-- **Szabályalapú tartalék**, ha nincs kulcs, vagy az API hibát ad. A felület így sosem marad üres.
-- Az eredmény addig van cache-elve, amíg az ügyfél idővonala nem változik. Így nem fizetünk kétszer ugyanazért az összefoglalóért (tesztelve).
 
 ## API
 
 | Metódus | Útvonal | Leírás |
 |---|---|---|
 | GET | `/api/dashboard` | KPI-k, 14 napos bevétel |
-| GET · POST | `/api/orders` | Lista (szűrés: `status`, `customer_id`) · új rendelés |
-| GET | `/api/orders/{id}` | Rendelés tételekkel |
-| PATCH | `/api/orders/{id}/status` | Állapotváltás az állapotgép szerint |
+| GET · POST | `/api/orders` | Lista (`status`, `customer_id`) · új rendelés |
+| GET · PATCH | `/api/orders/{id}` · `/api/orders/{id}/status` | Részletek · állapotváltás |
 | GET · POST | `/api/inventory/products` | Lista (`low_stock`, `search`) · új termék |
-| GET · PUT | `/api/inventory/products/{id}` | Részletek mozgásnaplóval · módosítás |
-| POST | `/api/inventory/products/{id}/movements` | Bevételezés vagy korrekció |
-| GET · POST | `/api/crm/customers` | Lista (`search`) · új ügyfél |
-| GET · PUT | `/api/crm/customers/{id}` | Adatlap idővonallal · módosítás |
-| POST | `/api/crm/customers/{id}/interactions` | Hívás, e-mail, találkozó, jegyzet, teendő |
-| PATCH | `/api/crm/customers/{id}/interactions/{id}/complete` | Teendő lezárása |
+| POST | `/api/inventory/products/{id}/movements` | Bevételezés / korrekció |
+| GET | `/api/inventory/forecast` | Kifogyási előrejelzés |
+| GET · POST | `/api/crm/customers` | Lista · új ügyfél (adószámmal) |
+| POST · PATCH | `/api/crm/customers/{id}/interactions` · `…/{id}/complete` | Idővonal-bejegyzés · teendő lezárása |
 | GET | `/api/crm/customers/{id}/summary` | AI-összefoglaló |
-
-Példa:
-
-```bash
-curl -X POST localhost:8000/api/orders -H 'Content-Type: application/json' -H 'Accept: application/json' \
-  -d '{"customer_id":1,"items":[{"product_id":2,"quantity":3}]}'
-```
+| GET | `/api/invoicing/invoices` · `/{id}` · `/{id}/xml` | Számlák, NAV XML |
+| POST | `/api/assistant/ask` | Természetes nyelvű kérdés az ERP-nek |
 
 ## Képernyők
 
 ![Vezérlőpult](docs/screenshots/01-vezerlopult.png)
 
-| Rendelés részletei | Új rendelés |
+| Rendelés NAV-számlával | Új rendelés |
 |---|---|
 | ![](docs/screenshots/02-rendeles.png) | ![](docs/screenshots/03-uj-rendeles.png) |
-| **Készlet** | **Ügyfél idővonal és AI-összefoglaló** |
+| **Készlet előrejelzéssel** | **Ügyfél idővonal, összefoglaló, következő lépés** |
 | ![](docs/screenshots/04-keszlet.png) | ![](docs/screenshots/05-ugyfelek.png) |
 
 ## Mit csinálnék a következő sprintben
 
-- Hitelesítés Sanctummal és szerepkörök (raktáros / értékesítő / admin) Policy-kkel
-- Számla-PDF és NAV Online Számla-integráció a fizetett rendelésekhez
-- Webshop-szinkron (pl. WooCommerce/Shopify webhook → `PlaceOrder`)
-- Elasticsearch-alapú termékkeresés nagy katalógushoz
-- A riasztások és az AI-hívások queue-ba tétele, Horizonnal monitorozva
+- Sztornó számla (`STORNO` módosító okirat) a `storno_required` számlákhoz, és a NAV-tranzakció státuszának lekérdezése
+- Hitelesítés Sanctummal, szerepkörök Policy-kkel (raktáros / értékesítő / könyvelő)
+- Valós idejű vezérlőpult Laravel Reverbbel (új rendelés és készletváltozás push-ban)
+- Böngészős végponttól-végpontig tesztek Pest 4-gyel
+- Webshop-szinkron (WooCommerce/Shopify webhook → `PlaceOrder`), Elasticsearch-alapú termékkeresés nagy katalógushoz
 
 ## Fejlesztés
 
 AI-asszisztált fejlesztéssel készült (Claude), ahogy a hirdetés is kéri. Az üzleti szabályokat és a modulhatárokat a tesztek rögzítik, így minden döntés ellenőrizhető.
 
-Minden cég, személy és adat kitalált.
+Minden cég, személy és adószám kitalált.
