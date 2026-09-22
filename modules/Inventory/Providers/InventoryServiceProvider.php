@@ -27,7 +27,7 @@ class InventoryServiceProvider extends ServiceProvider
         }
 
         $this->callAfterResolving(Schedule::class, function (Schedule $schedule) {
-            $schedule->command('inventory:low-stock-alert')->weekdays()->at('07:00')->withoutOverlapping();
+            $schedule->command('inventory:low-stock-alert')->weekdays()->at('07:00')->withoutOverlapping()->onOneServer();
         });
     }
 }

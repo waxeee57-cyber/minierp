@@ -32,9 +32,8 @@ class DashboardController extends Controller
 
         return response()->json(['data' => [
             'revenue_this_month' => $revenueThisMonth,
-            'orders_by_status' => collect(OrderStatus::cases())->mapWithKeys(fn ($s) => [
-                $s->value => Order::query()->where('status', $s)->count(),
-            ]),
+            'orders_by_status' => collect(OrderStatus::cases())->mapWithKeys(fn (OrderStatus $s) => [$s->value => 0])
+                ->merge(Order::query()->toBase()->selectRaw('status, count(*) as total')->groupBy('status')->pluck('total', 'status')->map(fn ($n) => (int) $n)),
             'low_stock_count' => Product::query()->lowStock()->count(),
             'open_tasks' => Interaction::query()->where('type', InteractionType::Task)->whereNull('completed_at')->count(),
             'overdue_tasks' => Interaction::query()->where('type', InteractionType::Task)->whereNull('completed_at')->where('due_at', '<', now())->count(),

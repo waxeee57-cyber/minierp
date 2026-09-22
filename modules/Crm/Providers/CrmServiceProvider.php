@@ -40,7 +40,7 @@ class CrmServiceProvider extends ServiceProvider
         }
 
         $this->callAfterResolving(Schedule::class, function (Schedule $schedule) {
-            $schedule->command('crm:follow-ups')->dailyAt('08:00')->withoutOverlapping();
+            $schedule->command('crm:follow-ups')->dailyAt('08:00')->withoutOverlapping()->onOneServer();
         });
     }
 }
