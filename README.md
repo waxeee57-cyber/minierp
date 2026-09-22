@@ -26,7 +26,7 @@ Rendelés-, készlet-, ügyfél- és számlakezelő rendszer egy kitalált iroda
 ## Indítás
 
 ```bash
-git clone https://github.com/waxeee57-cyber/mini-erp.git && cd mini-erp
+git clone https://github.com/waxeee57-cyber/minierp.git && cd minierp
 composer setup            # függőségek, .env, kulcs, SQLite, migráció, frontend build
 php artisan db:seed       # 12 termék, 8 ügyfél, ~40 rendelés, a fizetettekhez NAV-számlával
 php artisan serve         # http://localhost:8000
