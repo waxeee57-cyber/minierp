@@ -6,8 +6,10 @@ use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
 use Modules\Crm\Contracts\OrderHistory;
+use Modules\Orders\Contracts\SalesReport;
 use Modules\Orders\Listeners\WriteOrderToCustomerTimeline;
 use Modules\Orders\Services\EloquentOrderHistory;
+use Modules\Orders\Services\EloquentSalesReport;
 
 class OrdersServiceProvider extends ServiceProvider
 {
@@ -15,6 +17,7 @@ class OrdersServiceProvider extends ServiceProvider
     {
         // Az Orders modul adja a CRM által kért rendelési előzményeket.
         $this->app->singleton(OrderHistory::class, EloquentOrderHistory::class);
+        $this->app->singleton(SalesReport::class, EloquentSalesReport::class);
     }
 
     public function boot(): void
