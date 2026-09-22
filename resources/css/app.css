@@ -1,0 +1,29 @@
+@import 'tailwindcss';
+
+@source '../js/**/*.vue';
+@source '../views/**/*.blade.php';
+
+@theme {
+    --font-sans: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    --color-brand-50: #eef6ff;
+    --color-brand-100: #d9eaff;
+    --color-brand-500: #2f6fed;
+    --color-brand-600: #1f5ad6;
+    --color-brand-700: #1a48ad;
+}
+
+@layer base {
+    body { @apply bg-slate-50 text-slate-800 antialiased; }
+    .num { font-variant-numeric: tabular-nums; }
+}
+
+@layer components {
+    .card { @apply rounded-xl border border-slate-200 bg-white; }
+    .btn { @apply inline-flex items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium transition focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-1 disabled:cursor-not-allowed disabled:opacity-50; }
+    .btn-primary { @apply inline-flex items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium transition focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-1 disabled:cursor-not-allowed disabled:opacity-50 bg-brand-600 text-white hover:bg-brand-700; }
+    .btn-ghost { @apply inline-flex items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium transition focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-1 disabled:cursor-not-allowed disabled:opacity-50 border border-slate-200 bg-white text-slate-700 hover:bg-slate-50; }
+    .input { @apply w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-100 focus:outline-none; }
+    .th { @apply px-4 py-2.5 text-left text-xs font-medium tracking-wide text-slate-500 uppercase; }
+    .td { @apply px-4 py-3 text-sm; }
+}
