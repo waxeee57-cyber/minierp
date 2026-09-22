@@ -1,0 +1,22 @@
+# Crm modul domain-modellje. Generálás: php artisan erp:blueprint Crm
+models:
+  Customer:
+    name: string:120
+    email: string:160 unique
+    phone: string:40 nullable
+    company: string:160 nullable
+    city: string:80 nullable
+    notes: text nullable
+    last_contacted_at: timestamp nullable
+    softDeletes
+    relationships:
+      hasMany: Interaction
+
+  Interaction:
+    customer_id: id foreign:customers
+    type: enum:call,email,meeting,note,task,order
+    subject: string:160
+    body: text nullable
+    due_at: timestamp nullable
+    completed_at: timestamp nullable
+    occurred_at: timestamp

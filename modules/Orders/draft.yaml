@@ -1,0 +1,22 @@
+# Orders modul domain-modellje. Generálás: php artisan erp:blueprint Orders
+models:
+  Order:
+    number: string:20 unique
+    customer_id: id foreign:customers
+    status: enum:pending,paid,shipped,cancelled default:pending
+    total: unsignedInteger default:0
+    note: text nullable
+    placed_at: timestamp
+    paid_at: timestamp nullable
+    shipped_at: timestamp nullable
+    cancelled_at: timestamp nullable
+    relationships:
+      hasMany: OrderItem
+
+  OrderItem:
+    order_id: id foreign:orders
+    product_id: id foreign:products
+    product_name: string:160
+    quantity: unsignedInteger
+    unit_price: unsignedInteger
+    line_total: unsignedInteger

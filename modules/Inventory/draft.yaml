@@ -1,0 +1,19 @@
+# Inventory modul domain-modellje. Generálás: php artisan erp:blueprint Inventory
+models:
+  Product:
+    sku: string:40 unique
+    name: string:160
+    description: text nullable
+    unit_price: unsignedInteger
+    stock: integer default:0
+    reorder_level: unsignedInteger default:5
+    is_active: boolean default:true
+    relationships:
+      hasMany: StockMovement
+
+  StockMovement:
+    product_id: id foreign:products
+    quantity: integer
+    reason: enum:purchase,sale,return,adjustment
+    reference: string:60 nullable
+    note: string:255 nullable
