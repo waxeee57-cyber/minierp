@@ -4,7 +4,7 @@ Rendelés-, készlet- és ügyfélkezelő rendszer egy kitalált irodatechnikai 
 
 > Munkaminta az XTRADEVELOPERS Kft. Fullstack fejlesztő pozíciójára. Szilágyi Roland · waxeee57@gmail.com
 
-![Vezérlőpult](docs/screenshots/01-vezerlopult.png)
+![Bemutató: rendelés leadása, állapotváltás, ügyfél-idővonal, készlet](docs/demo.gif)
 
 ## Röviden
 
@@ -14,7 +14,7 @@ Rendelés-, készlet- és ügyfélkezelő rendszer egy kitalált irodatechnikai 
 | **Architektúra** | 3 modul (`modules/Crm`, `modules/Inventory`, `modules/Orders`), mindegyik saját ServiceProviderrel, route-okkal, migrációkkal |
 | **Domain-modell** | Modulonként `draft.yaml`, [Laravel Blueprint](https://blueprint.laravelshift.com)-tel generálva |
 | **Adatbázis-diagram** | [`recca0120/laravel-erd`](https://github.com/recca0120/laravel-erd), `composer erd` |
-| **Tesztek** | 36 teszt, 255 assertion: feature, unit és modulhatár-teszt. CI: GitHub Actions + Pint |
+| **Tesztek** | 42 teszt, 292 assertion: feature, unit, modulhatár- és 300 lépéses invariáns-teszt. CI: GitHub Actions + Pint |
 | **Ütemezés** | Napi készletriasztás és ügyfél-utókövetés a Laravel Schedulerrel |
 | **AI** | Ügyfél-összefoglaló a Claude API-val, kulcs nélkül vagy hiba esetén szabályalapú tartalékkal |
 
@@ -28,6 +28,17 @@ php artisan serve         # http://localhost:8000
 ```
 
 Tesztek: `composer test` · Kódstílus: `composer lint` · ERD újragenerálása: `composer erd`
+
+## 5 perc alatt a kódban
+
+Ha csak pár fájlt nézel meg, ezeket érdemes:
+
+1. [`modules/Orders/Actions/PlaceOrder.php`](modules/Orders/Actions/PlaceOrder.php): a rendelés leadása egy tranzakcióban, készletfoglalással.
+2. [`modules/Inventory/Services/EloquentStockLedger.php`](modules/Inventory/Services/EloquentStockLedger.php): soronkénti zárolás, és minden készletváltozás naplózva.
+3. [`modules/Orders/Enums/OrderStatus.php`](modules/Orders/Enums/OrderStatus.php): az állapotgép.
+4. [`modules/Crm/Contracts/OrderHistory.php`](modules/Crm/Contracts/OrderHistory.php): hogyan kap adatot a CRM az Orders modulból úgy, hogy nem függ tőle.
+5. [`tests/Feature/Inventory/LedgerInvariantTest.php`](tests/Feature/Inventory/LedgerInvariantTest.php): 300 véletlen művelet után is pontosan egyezik a készlet a mozgásnaplóval.
+6. [`app/Console/Commands/ModuleBlueprintCommand.php`](app/Console/Commands/ModuleBlueprintCommand.php): a Blueprint modulra szabva.
 
 ## Modulok
 
@@ -84,6 +95,7 @@ flowchart LR
 - Egy rendelés leadása egyetlen DB-tranzakció. Ha bármelyik tételből nincs elég, semmi nem íródik le, az előző tételek foglalása sem (tesztelve).
 - A foglalás `lockForUpdate`-tel zárolja a termék sorát, így két párhuzamos rendelés nem tudja eladni ugyanazt az utolsó darabot.
 - A készlet minden változása egy `stock_movements` sor. A termék készlete mindig a mozgások összege, ezt a tesztek ellenőrzik.
+- **Invariáns-teszt:** 300 véletlen bevételezés, rendelés, fizetés és lemondás után sem negatív a készlet. Pontosan egyezik a mozgásnaplóval, és minden rendelés végösszege egyezik a tételei összegével.
 - Az összegek egész forintban, `unsignedInteger`-ként vannak tárolva, lebegőpontos kerekítési hiba nélkül.
 - A rendelési tétel lemásolja a termék nevét és árát. Egy későbbi árváltozás nem írja át a régi rendeléseket.
 
@@ -120,7 +132,7 @@ A parancs a `modules/Orders/draft.yaml`-ből dolgozik. A modelleket a modul név
 | `inventory:low-stock-alert` | hétköznap 07:00 | E-mailt küld a raktárnak az újrarendelési szint alá esett aktív termékekről |
 | `crm:follow-ups` | naponta 08:00 | Utókövetési teendőt hoz létre, ha egy ügyfél X napja nem rendelt, és azóta senki nem kereste. Idempotens, nem duplikál. |
 
-Élesben ehhez egyetlen cron-sor kell: `* * * * * php artisan schedule:run`.
+Mindkét feladat `withoutOverlapping()` és `onOneServer()` beállítással fut, így több alkalmazásszerveren sem fut duplán. Élesben ehhez egyetlen cron-sor kell: `* * * * * php artisan schedule:run`.
 
 ## AI-összefoglaló
 
@@ -156,6 +168,8 @@ curl -X POST localhost:8000/api/orders -H 'Content-Type: application/json' -H 'A
 ```
 
 ## Képernyők
+
+![Vezérlőpult](docs/screenshots/01-vezerlopult.png)
 
 | Rendelés részletei | Új rendelés |
 |---|---|
