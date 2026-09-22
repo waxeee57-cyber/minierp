@@ -64,7 +64,7 @@ class StockTest extends TestCase
 
         Notification::assertSentOnDemand(LowStockReport::class, function (LowStockReport $n, array $channels, object $notifiable) use ($low) {
             return $notifiable->routes['mail'] === 'raktar@teszt.example'
-                && $n->products->pluck('id')->all() === [$low->id];
+                && $n->products->pluck('productId')->all() === [$low->id];
         });
     }
 

@@ -6,14 +6,17 @@ use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
 use Modules\Inventory\Console\LowStockAlertCommand;
+use Modules\Inventory\Contracts\DemandForecast;
 use Modules\Inventory\Contracts\StockLedger;
 use Modules\Inventory\Services\EloquentStockLedger;
+use Modules\Inventory\Services\MovementBasedForecast;
 
 class InventoryServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
         $this->app->singleton(StockLedger::class, EloquentStockLedger::class);
+        $this->app->singleton(DemandForecast::class, MovementBasedForecast::class);
     }
 
     public function boot(): void
