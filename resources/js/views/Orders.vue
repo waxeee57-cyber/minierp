@@ -10,6 +10,7 @@ const orders = ref([]);
 const meta = ref(null);
 const filter = ref(props.focus?.status ?? '');
 const selected = ref(null);
+const invoice = ref(null);
 const busy = ref(false);
 
 const filters = [
@@ -28,14 +29,17 @@ async function load(page = 1) {
 }
 
 async function open(order) {
-    selected.value = (await api(`/orders/${order.id}`)).data;
+    const [o, inv] = await Promise.all([api(`/orders/${order.id}`), api(`/invoicing/invoices?order_id=${order.id}`)]);
+    selected.value = o.data;
+    invoice.value = inv.data[0] ?? null;
 }
 
 async function transition(status) {
     busy.value = true;
     try {
-        selected.value = (await api(`/orders/${selected.value.id}/status`, { method: 'PATCH', body: { status } })).data;
-        toast(`${selected.value.number}: ${selected.value.status_label}`);
+        const updated = (await api(`/orders/${selected.value.id}/status`, { method: 'PATCH', body: { status } })).data;
+        await open(updated);
+        toast(invoice.value && status === 'paid' ? `${updated.number}: fizetve · számla ${invoice.value.number}` : `${updated.number}: ${updated.status_label}`);
         load(meta.value?.current_page ?? 1);
     } catch (e) {
         toast(e.message, 'error');
@@ -109,12 +113,12 @@ onMounted(() => load());
     <div class="card overflow-x-auto">
         <table class="w-full min-w-[640px]">
             <thead class="border-b border-slate-100 bg-slate-50/60">
-                <tr><th class="th">Sorszám</th><th class="th">Ügyfél</th><th class="th">Leadva</th><th class="th">Tétel</th><th class="th">Állapot</th><th class="th text-right">Összeg</th></tr>
+                <tr><th class="th">Sorszám</th><th class="th">Ügyfél</th><th class="th">Leadva</th><th class="th">Tétel</th><th class="th">Állapot</th><th class="th text-right">Nettó</th></tr>
             </thead>
             <tbody class="divide-y divide-slate-100">
                 <tr v-for="o in orders" :key="o.id" class="cursor-pointer hover:bg-slate-50" tabindex="0" @click="open(o)" @keydown.enter="open(o)">
                     <td class="td font-mono text-xs whitespace-nowrap">{{ o.number }}</td>
-                    <td class="td"><div class="font-medium">{{ o.customer.company }}</div><div class="text-xs text-slate-500">{{ o.customer.name }}</div></td>
+                    <td class="td"><div class="font-medium">{{ o.customer.company ?? o.customer.name }}</div><div class="text-xs text-slate-500">{{ o.customer.name }}</div></td>
                     <td class="td text-slate-500">{{ dateTime(o.placed_at) }}</td>
                     <td class="td num text-slate-500">{{ o.items_count }}</td>
                     <td class="td"><StatusBadge :status="o.status" :label="o.status_label" /></td>
@@ -134,7 +138,7 @@ onMounted(() => load());
     <Modal v-if="selected" :title="selected.number" wide @close="selected = null">
         <div class="mb-4 flex flex-wrap items-center justify-between gap-2">
             <div>
-                <div class="font-medium">{{ selected.customer.company }}</div>
+                <div class="font-medium">{{ selected.customer.company ?? selected.customer.name }}</div>
                 <div class="text-sm text-slate-500">{{ selected.customer.name }} · {{ dateTime(selected.placed_at) }}</div>
             </div>
             <StatusBadge :status="selected.status" :label="selected.status_label" />
@@ -147,8 +151,23 @@ onMounted(() => load());
                     <td class="num py-2 text-right font-medium">{{ money(i.line_total) }}</td>
                 </tr>
             </tbody>
-            <tfoot><tr><td class="pt-3 font-semibold" colspan="2">Végösszeg</td><td class="num pt-3 text-right font-semibold">{{ money(selected.total) }}</td></tr></tfoot>
+            <tfoot><tr><td class="pt-3 font-semibold" colspan="2">Végösszeg (nettó)</td><td class="num pt-3 text-right font-semibold">{{ money(selected.total) }}</td></tr></tfoot>
         </table>
+        <div v-if="invoice" class="mb-4 rounded-lg border border-slate-200 p-4">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                    <div class="text-xs text-slate-500">Számla · NAV Online Számla 3.0</div>
+                    <div class="font-mono text-sm font-semibold">{{ invoice.number }}</div>
+                </div>
+                <span class="rounded-full px-2 py-0.5 text-xs font-medium ring-1 ring-inset" :class="invoice.nav_status === 'validated' || invoice.nav_status === 'submitted' ? 'bg-emerald-50 text-emerald-700 ring-emerald-200' : 'bg-amber-50 text-amber-700 ring-amber-200'">{{ invoice.nav_status_label }}</span>
+            </div>
+            <dl class="mt-3 grid grid-cols-3 gap-2 text-sm">
+                <div><dt class="text-xs text-slate-500">Nettó</dt><dd class="num">{{ money(invoice.net_total) }}</dd></div>
+                <div><dt class="text-xs text-slate-500">ÁFA 27%</dt><dd class="num">{{ money(invoice.vat_total) }}</dd></div>
+                <div><dt class="text-xs text-slate-500">Bruttó</dt><dd class="num font-semibold">{{ money(invoice.gross_total) }}</dd></div>
+            </dl>
+            <a :href="invoice.xml_url" target="_blank" rel="noopener" class="mt-3 inline-block text-xs font-medium text-brand-600">NAV InvoiceData XML megnyitása →</a>
+        </div>
         <div v-if="selected.allowed_transitions.length" class="flex flex-wrap gap-2 border-t border-slate-100 pt-4">
             <button
                 v-for="t in selected.allowed_transitions"
@@ -157,7 +176,7 @@ onMounted(() => load());
                 :class="t.value === 'cancelled' ? 'btn-ghost text-red-600' : 'btn-primary'"
                 @click="transition(t.value)"
             >
-                {{ t.value === 'cancelled' ? 'Lemondás (készlet visszakerül)' : `Jelölés: ${t.label}` }}
+                {{ t.value === 'cancelled' ? 'Lemondás (készlet visszakerül)' : t.value === 'paid' ? 'Jelölés: Fizetve (számla készül)' : `Jelölés: ${t.label}` }}
             </button>
         </div>
         <p v-else class="border-t border-slate-100 pt-4 text-sm text-slate-500">Lezárt rendelés, további állapotváltás nem lehetséges.</p>
@@ -190,7 +209,7 @@ onMounted(() => load());
             </label>
             <p v-if="formError" class="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{{ formError }}</p>
             <div class="flex items-center justify-between border-t border-slate-100 pt-4">
-                <div class="text-sm text-slate-500">Összesen: <span class="num text-base font-semibold text-slate-900">{{ money(total) }}</span></div>
+                <div class="text-sm text-slate-500">Nettó összesen: <span class="num text-base font-semibold text-slate-900">{{ money(total) }}</span></div>
                 <button class="btn-primary" :disabled="busy">Rendelés rögzítése</button>
             </div>
         </form>

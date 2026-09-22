@@ -2,21 +2,20 @@
 import { computed, onMounted, ref } from 'vue';
 import { api, date, money } from '../api.js';
 import StatusBadge from '../components/StatusBadge.vue';
+import AskErp from '../components/AskErp.vue';
 
 const emit = defineEmits(['navigate']);
 const stats = ref(null);
 const orders = ref([]);
-const lowStock = ref([]);
+const forecast = ref([]);
+const forecastMeta = ref(null);
 
 onMounted(async () => {
-    const [s, o, l] = await Promise.all([
-        api('/dashboard'),
-        api('/orders?per_page=6'),
-        api('/inventory/products?low_stock=1&per_page=6'),
-    ]);
+    const [s, o, f] = await Promise.all([api('/dashboard'), api('/orders?per_page=6'), api('/inventory/forecast')]);
     stats.value = s.data;
     orders.value = o.data;
-    lowStock.value = l.data;
+    forecast.value = f.data.filter((x) => x.days_of_cover !== null).slice(0, 6);
+    forecastMeta.value = f.meta;
 });
 
 const maxDay = computed(() => Math.max(1, ...(stats.value?.revenue_by_day ?? []).map((d) => d.total)));
@@ -88,16 +87,28 @@ const maxDay = computed(() => Math.max(1, ...(stats.value?.revenue_by_day ?? [])
                 </div>
             </div>
             <div class="card lg:col-span-2">
-                <div class="px-4 py-3"><h2 class="text-sm font-semibold">Újrarendelni</h2></div>
+                <div class="flex items-baseline justify-between px-4 py-3">
+                    <h2 class="text-sm font-semibold">Kifogyási előrejelzés</h2>
+                    <span v-if="forecastMeta" class="text-[11px] text-slate-400">{{ forecastMeta.window_days }} napos eladásból · átfutás {{ forecastMeta.lead_time_days }} nap</span>
+                </div>
                 <ul class="divide-y divide-slate-100">
-                    <li v-for="p in lowStock" :key="p.id" class="flex items-center justify-between px-4 py-3 text-sm">
-                        <span>{{ p.name }}</span>
-                        <span class="num font-medium" :class="p.stock === 0 ? 'text-red-600' : 'text-amber-600'">{{ p.stock }} / {{ p.reorder_level }} db</span>
+                    <li v-for="p in forecast" :key="p.product_id" class="flex items-center justify-between gap-3 px-4 py-2.5 text-sm">
+                        <div class="min-w-0">
+                            <div class="truncate">{{ p.name }}</div>
+                            <div class="text-xs text-slate-500">{{ p.stock }} db · {{ p.daily_demand.toLocaleString('hu-HU') }} db/nap</div>
+                        </div>
+                        <div class="shrink-0 text-right">
+                            <div class="num font-medium" :class="p.days_of_cover === 0 ? 'text-red-600' : p.days_of_cover <= forecastMeta.lead_time_days ? 'text-amber-600' : 'text-slate-700'">
+                                {{ p.days_of_cover === 0 ? 'elfogyott' : `${p.days_of_cover} nap` }}
+                            </div>
+                            <div v-if="p.suggested_reorder" class="text-xs text-slate-500">rendelj {{ p.suggested_reorder }} db-ot</div>
+                        </div>
                     </li>
-                    <li v-if="!lowStock.length" class="px-4 py-6 text-center text-sm text-slate-400">Minden termékből van elég.</li>
                 </ul>
             </div>
         </div>
+
+        <AskErp />
     </div>
     <div v-else class="text-sm text-slate-400">Betöltés…</div>
 </template>

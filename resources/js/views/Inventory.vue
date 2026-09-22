@@ -6,6 +6,7 @@ import { toast } from '../components/Toast.js';
 
 const props = defineProps({ focus: Object });
 const products = ref([]);
+const forecast = ref({});
 const lowOnly = ref(!!props.focus?.lowStock);
 const search = ref('');
 const selected = ref(null);
@@ -15,7 +16,9 @@ const busy = ref(false);
 
 async function load() {
     const q = new URLSearchParams({ per_page: 100, ...(lowOnly.value ? { low_stock: 1 } : {}), ...(search.value ? { search: search.value } : {}) });
-    products.value = (await api(`/inventory/products?${q}`)).data;
+    const [p, f] = await Promise.all([api(`/inventory/products?${q}`), api('/inventory/forecast')]);
+    products.value = p.data;
+    forecast.value = Object.fromEntries(f.data.map((x) => [x.product_id, x]));
 }
 
 async function open(p) {
@@ -50,7 +53,7 @@ const fill = (p) => Math.min(100, (p.stock / Math.max(p.reorder_level * 4, 1)) *
 <template>
     <header class="mb-5">
         <h1 class="text-xl font-semibold">Készlet</h1>
-        <p class="text-sm text-slate-500">Minden változás készletmozgásként naplózva, a készlet mindig a mozgások összege.</p>
+        <p class="text-sm text-slate-500">Minden változás naplózva. A „Kitart” az elmúlt 30 nap eladásaiból számolt előrejelzés.</p>
     </header>
 
     <div class="mb-4 flex flex-wrap items-center gap-3">
@@ -59,9 +62,9 @@ const fill = (p) => Math.min(100, (p.stock / Math.max(p.reorder_level * 4, 1)) *
     </div>
 
     <div class="card overflow-x-auto">
-        <table class="w-full min-w-[640px]">
+        <table class="w-full min-w-[820px]">
             <thead class="border-b border-slate-100 bg-slate-50/60">
-                <tr><th class="th">Cikkszám</th><th class="th">Termék</th><th class="th text-right">Egységár</th><th class="th w-56">Készlet</th></tr>
+                <tr><th class="th">Cikkszám</th><th class="th">Termék</th><th class="th text-right">Nettó ár</th><th class="th w-56">Készlet</th><th class="th text-right">Kitart</th><th class="th text-right">Javasolt rendelés</th></tr>
             </thead>
             <tbody class="divide-y divide-slate-100">
                 <tr v-for="p in products" :key="p.id" class="cursor-pointer hover:bg-slate-50" tabindex="0" @click="open(p)" @keydown.enter="open(p)">
@@ -75,6 +78,14 @@ const fill = (p) => Math.min(100, (p.stock / Math.max(p.reorder_level * 4, 1)) *
                             </div>
                             <span class="num w-16 text-right text-sm" :class="p.stock === 0 ? 'font-semibold text-red-600' : p.is_low_stock ? 'font-semibold text-amber-600' : ''">{{ p.stock }} db</span>
                         </div>
+                    </td>
+                    <td class="td num text-right whitespace-nowrap" :title="forecast[p.id]?.stockout_on ? `Várható kifogyás: ${forecast[p.id].stockout_on}` : 'Nincs eladás az időszakban'">
+                        <span v-if="forecast[p.id]?.days_of_cover === null || !forecast[p.id]" class="text-slate-400">–</span>
+                        <span v-else :class="forecast[p.id].days_of_cover <= 7 ? 'font-semibold text-amber-600' : 'text-slate-600'">{{ forecast[p.id].days_of_cover }} nap</span>
+                    </td>
+                    <td class="td num text-right">
+                        <span v-if="forecast[p.id]?.suggested_reorder" class="rounded bg-brand-50 px-1.5 py-0.5 font-medium text-brand-700">{{ forecast[p.id].suggested_reorder }} db</span>
+                        <span v-else class="text-slate-300">–</span>
                     </td>
                 </tr>
             </tbody>

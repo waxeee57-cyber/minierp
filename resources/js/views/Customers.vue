@@ -94,6 +94,7 @@ onMounted(load);
                     <div>
                         <h2 class="text-lg font-semibold">{{ selected.company }}</h2>
                         <div class="text-sm text-slate-500">{{ selected.name }} · {{ selected.email }} · {{ selected.phone }}</div>
+                        <div v-if="selected.tax_number" class="text-xs text-slate-400">Adószám: {{ selected.tax_number }} · {{ selected.postal_code }} {{ selected.city }}, {{ selected.address }}</div>
                     </div>
                     <div class="text-right text-xs text-slate-500">Utolsó kapcsolat<br /><span class="text-sm font-medium text-slate-700">{{ date(selected.last_contacted_at) }}</span></div>
                 </div>
@@ -101,9 +102,10 @@ onMounted(load);
                 <div class="mt-4 rounded-lg border border-brand-100 bg-brand-50/60 p-4">
                     <div class="mb-1 flex items-center justify-between">
                         <span class="text-xs font-semibold tracking-wide text-brand-700 uppercase">Összefoglaló</span>
-                        <span v-if="summary" class="rounded bg-white px-1.5 py-0.5 text-[11px] text-slate-500 ring-1 ring-slate-200">{{ summary.source === 'claude' ? 'Claude AI' : 'szabályalapú' }}</span>
+                        <span v-if="summary" class="rounded bg-white px-1.5 py-0.5 text-[11px] text-slate-500 ring-1 ring-slate-200">{{ summary.source === 'ai' ? 'AI · Laravel AI SDK' : 'szabályalapú' }}</span>
                     </div>
                     <p class="text-sm leading-relaxed">{{ summaryLoading ? 'Összefoglaló készül…' : summary?.summary }}</p>
+                    <p v-if="summary?.next_action" class="mt-2 text-sm"><span class="font-semibold text-brand-700">Következő lépés:</span> {{ summary.next_action }}</p>
                 </div>
             </div>
 
