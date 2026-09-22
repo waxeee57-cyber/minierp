@@ -64,7 +64,8 @@ class DemoSeeder extends Seeder
             $customer = $customers[$i < 34 ? mt_rand(0, 5) : mt_rand(6, 7)];
             $daysAgo = $customer->id > 6 ? mt_rand(12, 45) : mt_rand(0, 30);
 
-            Carbon::setTestNow(now()->subDays($daysAgo)->setTime(mt_rand(8, 17), mt_rand(0, 59)));
+            $placedAt = now()->subDays($daysAgo)->setTime(mt_rand(8, 17), mt_rand(0, 59));
+            Carbon::setTestNow($placedAt->isFuture() ? now()->subMinutes(mt_rand(20, 240)) : $placedAt);
 
             $items = collect($products->random(mt_rand(1, 3)))->map(fn ($p) => [
                 'product_id' => $p->id,
