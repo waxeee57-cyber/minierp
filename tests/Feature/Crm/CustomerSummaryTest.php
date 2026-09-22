@@ -3,55 +3,56 @@
 namespace Tests\Feature\Crm;
 
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Http\Client\Request;
-use Illuminate\Support\Facades\Http;
+use Modules\Crm\Ai\CustomerBriefAgent;
 use Modules\Crm\Models\Customer;
 use Modules\Orders\Models\Order;
+use RuntimeException;
 use Tests\TestCase;
 
 class CustomerSummaryTest extends TestCase
 {
     use RefreshDatabase;
 
+    private function enableAi(): void
+    {
+        config(['erp.ai.provider' => 'anthropic', 'ai.providers.anthropic.key' => 'test-key']);
+    }
+
     public function test_rule_based_summary_without_api_key(): void
     {
-        config(['erp.ai.key' => null]);
+        config(['ai.providers.anthropic.key' => null]);
         $customer = Customer::factory()->create(['name' => 'Teszt Elek']);
         Order::factory()->for($customer)->placedDaysAgo(10)->create(['status' => 'paid', 'total' => 125_000]);
 
         $this->getJson("/api/crm/customers/{$customer->id}/summary")
             ->assertOk()
             ->assertJsonPath('data.source', 'rules')
+            ->assertJsonPath('data.next_action', fn ($a) => str_contains($a, 'Hívd fel'))
             ->assertJsonPath('data.summary', fn ($s) => str_contains($s, '1 rendelés') && str_contains($s, "125\u{00A0}000 Ft") && str_contains($s, 'érdemes felhívni'));
     }
 
-    public function test_claude_summary_uses_only_structured_context(): void
+    public function test_ai_summary_uses_structured_output_and_no_contact_details(): void
     {
-        config(['erp.ai.key' => 'test-key', 'erp.ai.model' => 'test-model']);
-        Http::fake(['api.anthropic.com/*' => Http::response(['content' => [['type' => 'text', 'text' => 'Hűséges ügyfél, hívd fel a Q4 igényekről.']]])]);
+        $this->enableAi();
+        CustomerBriefAgent::fake([['summary' => 'Hűséges ügyfél, havonta rendel.', 'next_action' => 'Ajánlj Q4 keretszerződést.']]);
 
-        $customer = Customer::factory()->create();
+        $customer = Customer::factory()->create(['email' => 'titkos@example.com', 'phone' => '+36 30 000 0000']);
 
         $this->getJson("/api/crm/customers/{$customer->id}/summary")
             ->assertOk()
-            ->assertJsonPath('data.source', 'claude')
-            ->assertJsonPath('data.summary', 'Hűséges ügyfél, hívd fel a Q4 igényekről.');
+            ->assertJsonPath('data.source', 'ai')
+            ->assertJsonPath('data.summary', 'Hűséges ügyfél, havonta rendel.')
+            ->assertJsonPath('data.next_action', 'Ajánlj Q4 keretszerződést.');
 
-        Http::assertSent(function (Request $request) {
-            $payload = json_decode($request['messages'][0]['content'], true);
-
-            return $request->hasHeader('x-api-key', 'test-key')
-                && $request['model'] === 'test-model'
-                && str_contains($request['system'], 'semmit ne találj ki')
-                && ! array_key_exists('email', $payload['customer'])
-                && ! array_key_exists('phone', $payload['customer']);
-        });
+        CustomerBriefAgent::assertPrompted(fn ($prompt) => ! str_contains($prompt->prompt, 'titkos@example.com')
+            && ! str_contains($prompt->prompt, '+36 30')
+            && str_contains($prompt->prompt, '"orders"'));
     }
 
     public function test_falls_back_to_rules_when_the_ai_call_fails(): void
     {
-        config(['erp.ai.key' => 'test-key', 'erp.ai.model' => 'test-model']);
-        Http::fake(['api.anthropic.com/*' => Http::response(['error' => 'overloaded'], 529)]);
+        $this->enableAi();
+        CustomerBriefAgent::fake(fn () => throw new RuntimeException('overloaded'));
 
         $customer = Customer::factory()->create();
 
@@ -62,17 +63,20 @@ class CustomerSummaryTest extends TestCase
 
     public function test_summary_is_cached_until_the_timeline_changes(): void
     {
-        config(['erp.ai.key' => 'test-key', 'erp.ai.model' => 'test-model']);
-        Http::fake(['api.anthropic.com/*' => Http::response(['content' => [['type' => 'text', 'text' => 'Összefoglaló.']]])]);
+        $this->enableAi();
+        CustomerBriefAgent::fake([
+            ['summary' => 'Első.', 'next_action' => 'X'],
+            ['summary' => 'Második.', 'next_action' => 'Y'],
+        ]);
 
         $customer = Customer::factory()->create();
 
-        $this->getJson("/api/crm/customers/{$customer->id}/summary");
-        $this->getJson("/api/crm/customers/{$customer->id}/summary");
-        Http::assertSentCount(1);
+        $this->getJson("/api/crm/customers/{$customer->id}/summary")->assertJsonPath('data.summary', 'Első.');
+        $this->getJson("/api/crm/customers/{$customer->id}/summary")->assertJsonPath('data.summary', 'Első.');
+        CustomerBriefAgent::assertPromptedTimes(1);
 
         $this->postJson("/api/crm/customers/{$customer->id}/interactions", ['type' => 'note', 'subject' => 'Új info']);
-        $this->getJson("/api/crm/customers/{$customer->id}/summary");
-        Http::assertSentCount(2);
+        $this->getJson("/api/crm/customers/{$customer->id}/summary")->assertJsonPath('data.summary', 'Második.');
+        CustomerBriefAgent::assertPromptedTimes(2);
     }
 }

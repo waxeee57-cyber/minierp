@@ -8,10 +8,13 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
+use Modules\Crm\Ai\CustomerBriefAgent;
 use Modules\Crm\Console\FollowUpCommand;
+use Modules\Crm\Contracts\CustomerDirectory;
 use Modules\Crm\Contracts\Timeline;
+use Modules\Crm\Services\EloquentCustomerDirectory;
 use Modules\Crm\Services\EloquentTimeline;
-use Modules\Crm\Services\Summary\ClaudeSummarizer;
+use Modules\Crm\Services\Summary\AiSummarizer;
 use Modules\Crm\Services\Summary\CustomerSummarizer;
 use Modules\Crm\Services\Summary\RuleBasedSummarizer;
 
@@ -20,10 +23,11 @@ class CrmServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->singleton(Timeline::class, EloquentTimeline::class);
+        $this->app->singleton(CustomerDirectory::class, EloquentCustomerDirectory::class);
 
-        // AI csak akkor, ha kulcs és modell is be van állítva; különben szabályalapú.
-        $this->app->bind(CustomerSummarizer::class, fn ($app) => config('erp.ai.key') && config('erp.ai.model')
-            ? $app->make(ClaudeSummarizer::class)
+        // AI csak akkor, ha a kiválasztott szolgáltatóhoz van kulcs; különben szabályalapú.
+        $this->app->bind(CustomerSummarizer::class, fn ($app) => CustomerBriefAgent::enabled()
+            ? $app->make(AiSummarizer::class)
             : $app->make(RuleBasedSummarizer::class));
     }
 

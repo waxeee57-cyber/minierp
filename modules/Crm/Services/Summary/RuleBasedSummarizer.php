@@ -18,6 +18,7 @@ class RuleBasedSummarizer implements CustomerSummarizer
         $ctx = $this->context->build($customer);
         $o = $ctx['orders'];
         $parts = [];
+        $next = null;
 
         if ($o['count'] === 0) {
             $parts[] = "{$customer->name} még nem rendelt.";
@@ -28,17 +29,19 @@ class RuleBasedSummarizer implements CustomerSummarizer
 
             if ($days >= config('erp.follow_up_after_days')) {
                 $parts[] = 'Régóta nem rendelt, érdemes felhívni.';
+                $next = 'Hívd fel, és kérdezd meg, mire lesz szüksége a következő hónapban.';
             }
         }
 
         if ($count = count($ctx['open_tasks'])) {
             $parts[] = "{$count} nyitott teendő: ".$ctx['open_tasks'][0]['subject'].'.';
+            $next ??= 'Zárd le a nyitott teendőt: '.$ctx['open_tasks'][0]['subject'].'.';
         }
 
         if (! $ctx['last_contact_at']) {
             $parts[] = 'Személyes kapcsolatfelvétel még nem volt rögzítve.';
         }
 
-        return ['summary' => implode(' ', $parts), 'source' => 'rules'];
+        return ['summary' => implode(' ', $parts), 'next_action' => $next, 'source' => 'rules'];
     }
 }
