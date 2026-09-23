@@ -27,3 +27,6 @@ Homestead.yaml
 Thumbs.db
 /.blueprint
 /database/database.sqlite
+
+/test-results
+/playwright-report
