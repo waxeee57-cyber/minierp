@@ -38,6 +38,7 @@ class NavInvoiceXmlBuilder
         $x = new XMLWriter;
         $x->openMemory();
         $x->setIndent(true);
+        $x->setIndentString('  ');
         $x->startDocument('1.0', 'UTF-8');
 
         $x->startElementNs(null, 'InvoiceData', self::NS_DATA);

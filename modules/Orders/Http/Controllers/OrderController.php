@@ -22,18 +22,30 @@ class OrderController extends Controller
         $request->validate([
             'status' => ['nullable', Rule::enum(OrderStatus::class)],
             'customer_id' => ['nullable', 'integer'],
+            'search' => ['nullable', 'string', 'max:80'],
         ]);
 
-        $orders = Order::query()
+        $scoped = Order::query()
+            ->when($request->integer('customer_id'), fn ($q, $id) => $q->where('customer_id', $id))
+            ->when($request->string('search')->toString(), function ($q, string $term) {
+                $q->where(fn ($q) => $q->where('number', 'like', "%{$term}%")
+                    ->orWhereHas('customer', fn ($c) => $c->where('company', 'like', "%{$term}%")->orWhere('name', 'like', "%{$term}%")));
+            });
+
+        $counts = (clone $scoped)->toBase()->selectRaw('status, count(*) as n')->groupBy('status')->pluck('n', 'status')->map(fn ($n) => (int) $n);
+
+        $orders = (clone $scoped)
             ->with('customer:id,name,company')
             ->withCount('items')
             ->when($request->input('status'), fn ($q, $status) => $q->where('status', $status))
-            ->when($request->integer('customer_id'), fn ($q, $id) => $q->where('customer_id', $id))
             ->latest('placed_at')
             ->latest('id')
-            ->paginate(min($request->integer('per_page', 20), 100));
+            ->paginate(min($request->integer('per_page', 20), 100))
+            ->withQueryString();
 
-        return OrderResource::collection($orders);
+        return OrderResource::collection($orders)->additional(['meta' => [
+            'status_counts' => collect(OrderStatus::cases())->mapWithKeys(fn (OrderStatus $s) => [$s->value => $counts[$s->value] ?? 0])->put('all', $counts->sum()),
+        ]]);
     }
 
     public function show(Order $order): OrderResource

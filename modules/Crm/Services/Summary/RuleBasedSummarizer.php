@@ -25,7 +25,12 @@ class RuleBasedSummarizer implements CustomerSummarizer
         } else {
             $revenue = Number::format($o['revenue'], locale: 'hu').' Ft';
             $days = (int) $o['last_order_at']->diffInDays(now());
-            $parts[] = "{$o['count']} rendelés, összesen {$revenue}; az utolsó {$days} napja volt.";
+            $when = match (true) {
+                $days === 0 => 'ma',
+                $days === 1 => 'tegnap',
+                default => "{$days} napja",
+            };
+            $parts[] = "{$o['count']} rendelés, összesen {$revenue}; az utolsó {$when} volt.";
 
             if ($days >= config('erp.follow_up_after_days')) {
                 $parts[] = 'Régóta nem rendelt, érdemes felhívni.';

@@ -2,6 +2,7 @@
 
 namespace Modules\Inventory\Http\Controllers;
 
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Routing\Controller;
@@ -26,12 +27,13 @@ class ProductController extends Controller
 
     public function show(Product $product): ProductResource
     {
-        return new ProductResource($product->load(['stockMovements' => fn ($q) => $q->latest('id')->limit(20)]));
+        return new ProductResource($product->load(['stockMovements' => fn ($q) => $q->latest('id')->latest('created_at')->limit(30)]));
     }
 
-    public function store(StoreProductRequest $request): ProductResource
+    public function store(StoreProductRequest $request): JsonResponse
     {
-        return new ProductResource(Product::create($request->validated()));
+        // Új termék nulla készlettel indul: készlet csak naplózott mozgással (bevételezés) keletkezhet.
+        return (new ProductResource(Product::create($request->validated() + ['stock' => 0])))->response()->setStatusCode(201);
     }
 
     public function update(StoreProductRequest $request, Product $product): ProductResource
