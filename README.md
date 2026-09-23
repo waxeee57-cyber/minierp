@@ -4,7 +4,8 @@ Rendelés-, készlet-, ügyfél- és számlakezelő rendszer egy kitalált iroda
 
 - **NAV Online Számla 3.0 XML-t állít ki**, a hivatalos XSD-vel ellenőrizve.
 - **Előre jelzi, mi fogy ki**, és mennyit kell rendelni.
-- **Természetes nyelven kérdezhető** a Laravel hivatalos AI SDK-ján keresztül.
+- **Természetes nyelven kérdezhető** a Laravel hivatalos AI SDK-ján keresztül – API-kulcs nélkül is, szabályalapú módban.
+- **Termékszintű felülettel:** ⌘K parancspaletta, mélylinkek, sötét mód, mobil nézet, papírhű számlakép és NAV XML-néző.
 
 > Munkaminta az XTRADEVELOPERS Kft. Fullstack fejlesztő pozíciójára · Szilágyi Roland · waxeee57@gmail.com
 
@@ -14,27 +15,28 @@ Rendelés-, készlet-, ügyfél- és számlakezelő rendszer egy kitalált iroda
 
 | | |
 |---|---|
-| **Stack** | Laravel 13 · PHP 8.4 · Vue 3 · Vite · Tailwind CSS 4 · SQLite / MySQL / PostgreSQL |
+| **Stack** | Laravel 13 · PHP 8.4 · Vue 3 + Vue Router · Vite · Tailwind CSS 4 · SQLite / MySQL / PostgreSQL |
 | **Modulok** | `Crm` · `Inventory` · `Orders` · `Invoicing` · `Assistant`, mindegyik saját ServiceProviderrel, route-okkal, migrációkkal |
 | **Domain-modell** | Modulonként `draft.yaml`, [Laravel Blueprint](https://blueprint.laravelshift.com)-tel, modulra szabott generátorral |
 | **Adatbázis-diagram** | [`recca0120/laravel-erd`](https://github.com/recca0120/laravel-erd), `composer erd` |
 | **Magyar számlázás** | NAV Online Számla 3.0 `InvoiceData` XML, offline XSD-validálással ([`pzs/nav-online-invoice`](https://github.com/pzs/nav-online-invoice)) |
 | **AI** | [Laravel AI SDK](https://laravel.com/ai) (`laravel/ai`): eszközhasználó ERP-asszisztens és strukturált kimenetű ügyfél-összefoglaló, szolgáltató-függetlenül |
 | **Előrejelzés** | Kifogyási dátum és javasolt rendelési mennyiség a készletmozgás-naplóból, prediktív riasztással |
-| **Tesztek** | 65 teszt, 504 assertion: feature, unit, modulhatár- és 300 lépéses invariáns-teszt. CI: GitHub Actions + Pint |
+| **Tesztek** | 76 PHPUnit-teszt (~1000 assertion): feature, unit, modulhatár-, 300 lépéses invariáns- és bemutatóadat-konzisztencia-teszt · 9 böngészős Playwright-teszt asztali és mobil nézetben. CI: GitHub Actions, Pint |
+| **Felület** | Lighthouse (mobil emuláció, 5 fő oldal): Accessibility **100**, Best Practices **100**, SEO **100**, CLS ≤ 0,085 |
 
 ## Indítás
 
 ```bash
 git clone https://github.com/waxeee57-cyber/minierp.git && cd minierp
 composer setup            # függőségek, .env, kulcs, SQLite, migráció, frontend build
-php artisan db:seed       # 12 termék, 8 ügyfél, ~40 rendelés, a fizetettekhez NAV-számlával
+php artisan db:seed       # 12 termék, 8 ügyfél, ~70 rendelés 65 napra, a fizetettekhez NAV-számlával
 php artisan serve         # http://localhost:8000
 ```
 
-Tesztek: `composer test` · Kódstílus: `composer lint` · ERD: `composer erd`
+Tesztek: `composer test` · Böngészős tesztek: `npm run e2e` · Kódstílus: `composer lint` · ERD: `composer erd`
 
-Az AI-funkciókhoz elég egy kulcs a `.env`-ben (`ANTHROPIC_API_KEY=…`). Kulcs nélkül minden más működik, az ügyfél-összefoglaló pedig szabályalapúra vált.
+Az AI-funkciókhoz elég egy kulcs a `.env`-ben (`ANTHROPIC_API_KEY=…`). **Kulcs nélkül is minden működik:** az asszisztens és az ügyfél-összefoglaló szabályalapú módra vált, ugyanazokkal a csak olvasó eszközökkel, és a felület mindig jelzi, melyik mód válaszolt.
 
 ## 5 perc alatt a kódban
 
@@ -44,6 +46,22 @@ Az AI-funkciókhoz elég egy kulcs a `.env`-ben (`ANTHROPIC_API_KEY=…`). Kulcs
 4. [`modules/Assistant/Ai/ErpAssistant.php`](modules/Assistant/Ai/ErpAssistant.php): AI-ügynök, csak olvasó eszközökkel.
 5. [`modules/Inventory/Services/MovementBasedForecast.php`](modules/Inventory/Services/MovementBasedForecast.php): magyarázható kifogyási előrejelzés.
 6. [`tests/Architecture/ModuleBoundariesTest.php`](tests/Architecture/ModuleBoundariesTest.php): a modulhatárok automatikus őre.
+
+## Felület
+
+A Vue 3 felület egy valódi napi munkaeszköz mintájára készült (Linear, Stripe Dashboard), nem admin-sablon:
+
+- **⌘K / Ctrl+K parancspaletta:** modulokon átívelő keresés (ügyfél, termék, rendelés, számla egy végponton), gyorsműveletek, és ha nincs találat, a kérdés egy kattintással az ERP-asszisztenshez megy.
+- **Billentyűparancsok:** `C` új rendelés, `G` + `D/O/K/U/S` ugrás, `Esc` bezárás.
+- **Mélylinkek:** minden rendelés, termék, ügyfél és számla saját URL-t kap (`/orders/42`, `/invoices/7`), szűrőkkel együtt megosztható.
+- **Oldalpanelek modálok helyett:** a lista a háttérben marad, a panel fókuszcsapdával, Esc-kel és egymásra nyitható módon működik.
+- **Rendelés-életút:** leadva → fizetve → kiszállítva idővonallal, lemondás kétlépéses megerősítéssel.
+- **Új rendelés élő készletellenőrzéssel:** kereshető termékválasztó, ékezet-független keresés, összesített mennyiség szerinti hiányjelzés (mint a szerveren), nettó/ÁFA/bruttó élőben.
+- **Számla két nézetben:** nyomtatható, papírhű számlakép és szintaxiskiemelt NAV `InvoiceData` XML másolással, letöltéssel.
+- **Grafikonok grafikonkönyvtár nélkül:** saját SVG-komponens monoton köbös görbével (nem lő 0 alá), valós idejű tengellyel a készlettörténetnél, egér- és érintésvezérelt tooltippel.
+- **Sötét mód** szemantikus design tokenekkel, villanás nélkül; **mobil nézet** alsó fülsávval, kártyás listákkal.
+- **Magyar mindenhol:** validációs üzenetek (`lang/hu`), számformátum, relatív idők („tegnap 14:20”).
+- **Mérve:** Lighthouse Accessibility / Best Practices / SEO 100 mind az öt fő oldalon; a betűtípus előtöltve, metrikailag illesztett tartalékkal, így nincs elrendezés-ugrás. Fő JS-csomag 48 kB gzip, oldalanként kódfelosztással.
 
 ## Modulok és határaik
 
@@ -117,6 +135,8 @@ javasolt rendelés  = napi kereslet × (átfutás + biztonsági napok) − kész
 
 **ERP-asszisztens** (`POST /api/assistant/ask`): egy [`ErpAssistant`](modules/Assistant/Ai/ErpAssistant.php) ügynök, 5 csak olvasó eszközzel.
 
+- **Kulcs nélkül vagy szolgáltatói hibánál** a [`RuleBasedAssistant`](modules/Assistant/Services/RuleBasedAssistant.php) válaszol: kulcsszavas szándékfelismerés, majd *ugyanazok* az eszközök. A válasz jelzi a módot (`ai` / `rules`) és a felhasznált eszközöket, így a forrás mindig ellenőrizhető.
+
 - **Az eszközök:** `FindCustomer`, `CustomerProfile`, `SalesSummary`, `StockOutlook` és `OpenTasks`.
 - **Tipikus kérdések:** „Mi fogy ki a következő 7 napban, és mennyit rendeljek?”, „Ki volt a legjobb ügyfelünk az elmúlt 30 napban?”
 - **Az utasítások tiltják a kitalálást**, és az eszközök nem adnak ki e-mail-címet vagy telefonszámot (tesztelve).
@@ -175,13 +195,14 @@ A parancs a modul `draft.yaml`-jéből a modul névterébe generál modellt, mig
 
 | Metódus | Útvonal | Leírás |
 |---|---|---|
-| GET | `/api/dashboard` | KPI-k, 14 napos bevétel |
-| GET · POST | `/api/orders` | Lista (`status`, `customer_id`) · új rendelés |
+| GET | `/api/dashboard?days=7\|14\|30\|90` | KPI-k, leadott vs. realizált bevétel naponta, előző időszak, top ügyfelek, teendők |
+| GET | `/api/search?q=` | Globális keresés a parancspalettához (ügyfél, termék, rendelés, számla) |
+| GET · POST | `/api/orders` | Lista (`status`, `customer_id`, `search`, állapotonkénti darabszám) · új rendelés |
 | GET · PATCH | `/api/orders/{id}` · `/api/orders/{id}/status` | Részletek · állapotváltás |
-| GET · POST | `/api/inventory/products` | Lista (`low_stock`, `search`) · új termék |
+| GET · POST · PATCH | `/api/inventory/products` · `/{id}` | Lista (`low_stock`, `search`) · új termék (0 készlettel) · részletek mozgásonkénti egyenleggel · módosítás |
 | POST | `/api/inventory/products/{id}/movements` | Bevételezés / korrekció |
 | GET | `/api/inventory/forecast` | Kifogyási előrejelzés |
-| GET · POST | `/api/crm/customers` | Lista · új ügyfél (adószámmal) |
+| GET · POST · PATCH | `/api/crm/customers` · `/{id}` | Lista · új ügyfél (adószámmal) · részletek rendelési statisztikával · módosítás |
 | POST · PATCH | `/api/crm/customers/{id}/interactions` · `…/{id}/complete` | Idővonal-bejegyzés · teendő lezárása |
 | GET | `/api/crm/customers/{id}/summary` | AI-összefoglaló |
 | GET | `/api/invoicing/invoices` · `/{id}` · `/{id}/xml` | Számlák, NAV XML |
@@ -191,18 +212,23 @@ A parancs a modul `draft.yaml`-jéből a modul névterébe generál modellt, mig
 
 ![Vezérlőpult](docs/screenshots/01-vezerlopult.png)
 
-| Rendelés NAV-számlával | Új rendelés |
+| ERP-asszisztens kulcs nélkül | ⌘K parancspaletta |
 |---|---|
-| ![](docs/screenshots/02-rendeles.png) | ![](docs/screenshots/03-uj-rendeles.png) |
-| **Készlet előrejelzéssel** | **Ügyfél idővonal, összefoglaló, következő lépés** |
+| ![](docs/screenshots/11-asszisztens.png) | ![](docs/screenshots/08-parancspaletta.png) |
+| **Új rendelés élő készletellenőrzéssel** | **Fizetés → automatikus NAV-számla** |
+| ![](docs/screenshots/03-uj-rendeles.png) | ![](docs/screenshots/02-rendeles.png) |
+| **Papírhű számlakép** | **NAV Online Számla 3.0 XML** |
+| ![](docs/screenshots/06-szamla.png) | ![](docs/screenshots/07-nav-xml.png) |
+| **Készlet: előrejelzés, készlettörténet, napló** | **Ügyfél: helyzetkép, idővonal, teendők** |
 | ![](docs/screenshots/04-keszlet.png) | ![](docs/screenshots/05-ugyfelek.png) |
+| **Sötét mód** | **Mobil** |
+| ![](docs/screenshots/09-sotet-mod.png) | ![](docs/screenshots/10-mobil.png) |
 
 ## Mit csinálnék a következő sprintben
 
 - Sztornó számla (`STORNO` módosító okirat) a `storno_required` számlákhoz, és a NAV-tranzakció státuszának lekérdezése
 - Hitelesítés Sanctummal, szerepkörök Policy-kkel (raktáros / értékesítő / könyvelő)
 - Valós idejű vezérlőpult Laravel Reverbbel (új rendelés és készletváltozás push-ban)
-- Böngészős végponttól-végpontig tesztek Pest 4-gyel
 - Webshop-szinkron (WooCommerce/Shopify webhook → `PlaceOrder`), Elasticsearch-alapú termékkeresés nagy katalógushoz
 
 ## Fejlesztés
