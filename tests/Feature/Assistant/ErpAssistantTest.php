@@ -29,13 +29,39 @@ class ErpAssistantTest extends TestCase
         return json_decode(app($class)->handle(new Request($args)), true);
     }
 
-    public function test_is_disabled_gracefully_without_an_api_key(): void
+    public function test_without_an_api_key_falls_back_to_rules_using_the_same_tools(): void
     {
         config(['ai.providers.anthropic.key' => null]);
+        ErpAssistant::fake();
+        $product = app(StockLedger::class)->record(Product::factory()->create(['stock' => 0, 'name' => 'Jabra headset', 'reorder_level' => 2]), 3, 'purchase');
+        $customer = Customer::factory()->create();
+        $order = app(PlaceOrder::class)->handle($customer->id, [['product_id' => $product->id, 'quantity' => 2]]);
 
-        $this->postJson('/api/assistant/ask', ['question' => 'Mi fogy ki a héten?'])
-            ->assertStatus(503)
-            ->assertJsonPath('message', fn ($m) => str_contains($m, 'ANTHROPIC_API_KEY'));
+        $this->postJson('/api/assistant/ask', ['question' => 'Mi fogy ki 30 napon belül?'])
+            ->assertOk()
+            ->assertJsonPath('data.mode', 'rules')
+            ->assertJsonPath('data.tools_used', ['StockOutlook'])
+            ->assertJsonPath('data.answer', fn ($a) => str_contains($a, 'Jabra headset'));
+
+        ErpAssistant::assertNeverPrompted();
+    }
+
+    public function test_rule_mode_answers_sales_tasks_and_customer_questions(): void
+    {
+        config(['ai.providers.anthropic.key' => null]);
+        $customer = Customer::factory()->create(['company' => 'Bakony Bau Kft.']);
+        $product = app(StockLedger::class)->record(Product::factory()->create(['stock' => 0, 'unit_price' => 50_000]), 10, 'purchase');
+        app(TransitionOrder::class)->handle(app(PlaceOrder::class)->handle($customer->id, [['product_id' => $product->id, 'quantity' => 2]]), OrderStatus::Paid);
+        $customer->interactions()->create(['type' => 'task', 'subject' => 'Árajánlat küldése', 'due_at' => now()->subDay(), 'occurred_at' => now()->subDays(2)]);
+
+        $ask = fn (string $q) => $this->postJson('/api/assistant/ask', ['question' => $q])->assertOk()->json('data');
+
+        $this->assertStringContainsString('Bakony Bau Kft.', $ask('Ki volt a legjobb ügyfelünk az elmúlt 30 napban?')['answer']);
+        $this->assertStringContainsString('LEJÁRT', $ask('Milyen lejárt teendőink vannak?')['answer']);
+        $profile = $ask('Hogy áll a Bakony Bau?');
+        $this->assertSame(['FindCustomer', 'CustomerProfile'], $profile['tools_used']);
+        $this->assertStringContainsString('1 rendelés', $profile['answer']);
+        $this->assertSame([], $ask('Milyen idő lesz holnap?')['tools_used']);
     }
 
     public function test_answers_through_the_laravel_ai_sdk(): void
@@ -45,17 +71,21 @@ class ErpAssistantTest extends TestCase
 
         $this->postJson('/api/assistant/ask', ['question' => 'Mi fogy ki a héten?'])
             ->assertOk()
-            ->assertJsonPath('data.answer', 'A Jabra headset 3 nap múlva elfogy, rendelj 12 darabot.');
+            ->assertJsonPath('data.answer', 'A Jabra headset 3 nap múlva elfogy, rendelj 12 darabot.')
+            ->assertJsonPath('data.mode', 'ai');
 
         ErpAssistant::assertPrompted('Mi fogy ki a héten?');
     }
 
-    public function test_provider_failure_returns_a_clean_502(): void
+    public function test_provider_failure_degrades_to_rule_mode_instead_of_erroring(): void
     {
         config(['ai.providers.anthropic.key' => 'test-key']);
         ErpAssistant::fake(fn () => throw new RuntimeException('timeout'));
 
-        $this->postJson('/api/assistant/ask', ['question' => 'Mennyi volt a bevétel?'])->assertStatus(502);
+        $this->postJson('/api/assistant/ask', ['question' => 'Mennyi volt a bevétel?'])
+            ->assertOk()
+            ->assertJsonPath('data.mode', 'rules')
+            ->assertJsonPath('data.degraded', true);
     }
 
     public function test_exposes_exactly_the_read_only_tools(): void
