@@ -26,6 +26,9 @@ class DemoSeeder extends Seeder
     {
         mt_srand(2026);
 
+        // A nyitókészlet és az ügyfélkör a rendelések előtt keletkezik, hogy a napló időrendje hiteles legyen.
+        Carbon::setTestNow(now()->subDays(70)->setTime(8, 0));
+
         $products = collect([
             ['IT-1001', 'Lenovo ThinkPad E14 laptop', 329_900, 16, 4],
             ['IT-1002', 'Dell 24" IPS monitor', 64_900, 40, 6],
@@ -61,17 +64,40 @@ class DemoSeeder extends Seeder
             'phone' => '+36 30 '.mt_rand(100, 999).' '.mt_rand(1000, 9999),
         ]));
 
-        // 40 rendelés az elmúlt 45 napban, a legtöbb friss, néhány ügyfél "elalszik".
-        for ($i = 0; $i < 40; $i++) {
-            $customer = $customers[$i < 34 ? mt_rand(0, 5) : mt_rand(6, 7)];
-            $daysAgo = $customer->id > 6 ? mt_rand(12, 45) : mt_rand(0, 30);
+        Carbon::setTestNow();
+        $cap = now()->subMinutes(5); // semmi sem történhet a valódi „most” után
+
+        // ~80 rendelés az elmúlt 65 napban, enyhén növekvő ütemben (több a friss),
+        // időrendben leadva, félidőben egy beszerzéssel. Két ügyfél "elalszik".
+        $timeline = collect(range(1, 80))
+            ->map(fn () => (int) floor(65 * (mt_rand() / mt_getrandmax()) ** 1.25))
+            ->sortDesc()
+            ->values();
+        $restocked = false;
+
+        foreach ($timeline as $i => $daysAgo) {
+            if (! $restocked && $daysAgo <= 32) {
+                Carbon::setTestNow(now()->subDays(32)->setTime(9, 30));
+                $products->each(fn (Product $p) => $ledger->record($p->refresh(), (int) round($p->reorder_level * 3), 'purchase', 'BESZ-2026-0'.(40 + $p->id), 'Havi beszerzés'));
+                Carbon::setTestNow();
+                $restocked = true;
+            }
+
+            $sleeper = $i % 9 === 0;
+            if ($sleeper && $daysAgo < 14) {
+                $sleeper = false;
+            }
+            $customer = $customers[$sleeper ? mt_rand(6, 7) : mt_rand(0, 5)];
 
             $placedAt = now()->subDays($daysAgo)->setTime(mt_rand(8, 17), mt_rand(0, 59));
-            Carbon::setTestNow($placedAt->isFuture() ? now()->subMinutes(mt_rand(20, 240)) : $placedAt);
+            if ($placedAt->isFuture()) {
+                $placedAt = now()->subMinutes(mt_rand(20, 240));
+            }
+            Carbon::setTestNow($placedAt);
 
             $items = collect($products->random(mt_rand(1, 3)))->map(fn ($p) => [
                 'product_id' => $p->id,
-                'quantity' => mt_rand(1, $p->unit_price > 100_000 ? 2 : 5),
+                'quantity' => mt_rand(1, $p->unit_price > 100_000 ? 2 : 4),
             ])->all();
 
             try {
@@ -82,13 +108,19 @@ class DemoSeeder extends Seeder
                 continue; // Elfogyott termék: a valóságban is visszautasított rendelés.
             }
 
+            // Az állapotváltások a valóságnak megfelelően később történnek: fizetés 1–40 óra, kiszállítás további 1–3 nap múlva.
+            $at = fn (Carbon $base, int $minH, int $maxH) => $base->copy()->addMinutes(mt_rand($minH * 60, $maxH * 60))->min($cap)->max($base);
             $roll = mt_rand(1, 100);
-            if ($daysAgo > 2 && $roll <= 85) {
+            if ($daysAgo > 2 && $roll <= 88) {
+                $paidAt = $at($placedAt, 1, 40);
+                Carbon::setTestNow($paidAt);
                 $transition->handle($order, OrderStatus::Paid);
-                if ($daysAgo > 4 && $roll <= 70) {
+                if ($daysAgo > 4 && $roll <= 76) {
+                    Carbon::setTestNow($at($paidAt, 20, 72));
                     $transition->handle($order, OrderStatus::Shipped);
                 }
-            } elseif ($roll > 94) {
+            } elseif ($roll > 95) {
+                Carbon::setTestNow($at($placedAt, 2, 30));
                 $transition->handle($order->load('items'), OrderStatus::Cancelled);
             }
 
