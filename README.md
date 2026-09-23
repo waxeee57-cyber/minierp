@@ -1,9 +1,10 @@
 # Mini-ERP · moduláris Laravel 13
 
-Rendelés-, készlet-, ügyfél- és számlakezelő rendszer egy kitalált irodatechnikai nagykereskedésnek. Öt önálló modulból áll:
+Rendelés-, készlet-, ügyfél- és számlakezelő rendszer egy kitalált irodatechnikai nagykereskedésnek. Hat önálló modulból áll:
 
 - **NAV Online Számla 3.0 XML-t állít ki**, a hivatalos XSD-vel ellenőrizve.
 - **Előre jelzi, mi fogy ki**, és mennyit kell rendelni.
+- **Webshopokhoz kapcsolódik:** Shopify- és WooCommerce-rendeléseket vesz át aláírt webhookkal, Google Shopping- és Árukereső-feedet ad, és marketingforrás szerint méri a bevételt.
 - **Természetes nyelven kérdezhető** a Laravel hivatalos AI SDK-ján keresztül – API-kulcs nélkül is, szabályalapú módban.
 - **Termékszintű felülettel:** ⌘K parancspaletta, mélylinkek, sötét mód, mobil nézet, papírhű számlakép és NAV XML-néző.
 
@@ -16,13 +17,14 @@ Rendelés-, készlet-, ügyfél- és számlakezelő rendszer egy kitalált iroda
 | | |
 |---|---|
 | **Stack** | Laravel 13 · PHP 8.4 · Vue 3 + Vue Router · Vite · Tailwind CSS 4 · SQLite / MySQL / PostgreSQL |
-| **Modulok** | `Crm` · `Inventory` · `Orders` · `Invoicing` · `Assistant`, mindegyik saját ServiceProviderrel, route-okkal, migrációkkal |
+| **Modulok** | `Crm` · `Inventory` · `Orders` · `Invoicing` · `Assistant` · `Channels`, mindegyik saját ServiceProviderrel, route-okkal, migrációkkal |
 | **Domain-modell** | Modulonként `draft.yaml`, [Laravel Blueprint](https://blueprint.laravelshift.com)-tel, modulra szabott generátorral |
 | **Adatbázis-diagram** | [`recca0120/laravel-erd`](https://github.com/recca0120/laravel-erd), `composer erd` |
 | **Magyar számlázás** | NAV Online Számla 3.0 `InvoiceData` XML, offline XSD-validálással ([`pzs/nav-online-invoice`](https://github.com/pzs/nav-online-invoice)) |
 | **AI** | [Laravel AI SDK](https://laravel.com/ai) (`laravel/ai`): eszközhasználó ERP-asszisztens és strukturált kimenetű ügyfél-összefoglaló, szolgáltató-függetlenül |
 | **Előrejelzés** | Kifogyási dátum és javasolt rendelési mennyiség a készletmozgás-naplóból, prediktív riasztással |
-| **Tesztek** | 76 PHPUnit-teszt (~1000 assertion): feature, unit, modulhatár-, 300 lépéses invariáns- és bemutatóadat-konzisztencia-teszt · 9 böngészős Playwright-teszt asztali és mobil nézetben. CI: GitHub Actions, Pint |
+| **Webshop-integráció** | Shopify és WooCommerce webhook HMAC-aláírással, idempotens átvétellel · Google Merchant Center és Árukereső XML-feed · UTM-alapú bevételi riport |
+| **Tesztek** | 90 PHPUnit-teszt (~1300 assertion): feature, unit, modulhatár-, 300 lépéses invariáns- és bemutatóadat-konzisztencia-teszt · 10 böngészős Playwright-teszt asztali és mobil nézetben. CI: GitHub Actions, Pint |
 | **Felület** | Lighthouse (mobil emuláció, 5 fő oldal): Accessibility **100**, Best Practices **100**, SEO **100**, CLS ≤ 0,085 |
 
 ## Indítás
@@ -30,7 +32,7 @@ Rendelés-, készlet-, ügyfél- és számlakezelő rendszer egy kitalált iroda
 ```bash
 git clone https://github.com/waxeee57-cyber/minierp.git && cd minierp
 composer setup            # függőségek, .env, kulcs, SQLite, migráció, frontend build
-php artisan db:seed       # 12 termék, 8 ügyfél, ~70 rendelés 65 napra, a fizetettekhez NAV-számlával
+php artisan db:seed       # 12 termék, 8 céges ügyfél, ~70 rendelés 65 napra + 16 webshop-rendelés, NAV-számlákkal
 php artisan serve         # http://localhost:8000
 ```
 
@@ -45,7 +47,8 @@ Az AI-funkciókhoz elég egy kulcs a `.env`-ben (`ANTHROPIC_API_KEY=…`). **Kul
 3. [`modules/Invoicing/Services/NavInvoiceXmlBuilder.php`](modules/Invoicing/Services/NavInvoiceXmlBuilder.php) és [`NavSchemaValidator.php`](modules/Invoicing/Services/NavSchemaValidator.php): NAV 3.0 XML, cégnek és magánszemélynek.
 4. [`modules/Assistant/Ai/ErpAssistant.php`](modules/Assistant/Ai/ErpAssistant.php): AI-ügynök, csak olvasó eszközökkel.
 5. [`modules/Inventory/Services/MovementBasedForecast.php`](modules/Inventory/Services/MovementBasedForecast.php): magyarázható kifogyási előrejelzés.
-6. [`tests/Architecture/ModuleBoundariesTest.php`](tests/Architecture/ModuleBoundariesTest.php): a modulhatárok automatikus őre.
+6. [`modules/Channels/Actions/ImportChannelOrder.php`](modules/Channels/Actions/ImportChannelOrder.php): idempotens webshop-rendelésátvétel, ugyanazon az úton, mint a kézi rendelés.
+7. [`tests/Architecture/ModuleBoundariesTest.php`](tests/Architecture/ModuleBoundariesTest.php): a modulhatárok automatikus őre.
 
 ## Felület
 
@@ -61,7 +64,7 @@ A Vue 3 felület egy valódi napi munkaeszköz mintájára készült (Linear, St
 - **Grafikonok grafikonkönyvtár nélkül:** saját SVG-komponens monoton köbös görbével (nem lő 0 alá), valós idejű tengellyel a készlettörténetnél, egér- és érintésvezérelt tooltippel.
 - **Sötét mód** szemantikus design tokenekkel, villanás nélkül; **mobil nézet** alsó fülsávval, kártyás listákkal.
 - **Magyar mindenhol:** validációs üzenetek (`lang/hu`), számformátum, relatív idők („tegnap 14:20”).
-- **Mérve:** Lighthouse Accessibility / Best Practices / SEO 100 mind az öt fő oldalon; a betűtípus előtöltve, metrikailag illesztett tartalékkal, így nincs elrendezés-ugrás. Fő JS-csomag 48 kB gzip, oldalanként kódfelosztással.
+- **Mérve:** Lighthouse Accessibility / Best Practices / SEO 100 mind az öt mért fő oldalon; a betűtípus előtöltve, metrikailag illesztett tartalékkal, így nincs elrendezés-ugrás. Fő JS-csomag 48 kB gzip, oldalanként kódfelosztással.
 
 ## Modulok és határaik
 
@@ -88,17 +91,25 @@ flowchart LR
     subgraph Assistant
         AI[ErpAssistant · Laravel AI SDK]
     end
+    subgraph Channels
+        WH[Webhook → ImportChannelOrder]
+        FD[Google / Árukereső feed]
+    end
     PO -- készletfoglalás --> SL
     PO -- esemény --> TL
     Orders -. megvalósítja .-> OH
     PO -- OrderStatusChanged --> II
     AI --> CD & SR & DF
+    WH -- PlaceOrder / TransitionOrder --> PO
+    WH -- CustomerRegistry --> CD
+    FD -- ProductCatalog --> SL
 ```
 
 - **Az Orders a készlethez csak a `StockLedger` szerződésen át nyúl**, a táblákat soha nem írja közvetlenül.
 - **A CRM nem függ az Orders modultól.** A CRM definiálja az `OrderHistory` interfészt, az Orders pedig megvalósítja (függőség-megfordítás).
 - **A számlázás eseményre reagál.** Az Orders modul nem tud a számlázásról, így ki-be kapcsolható.
-- **Az AI-asszisztens csak szerződéseken át olvas, és nem írhat.** Nem fér hozzá a `StockLedger`-hez és a `Timeline`-hoz.
+- **Az AI-asszisztens csak szerződéseken át olvas, és nem írhat.** Nem fér hozzá a `StockLedger`-hez, a `Timeline`-hoz és a `CustomerRegistry`-hez.
+- **A webshop-csatornák** csak szerződésen (`ProductCatalog`, `CustomerRegistry`) és publikus akción (`PlaceOrder`, `TransitionOrder`) át érnek más modulhoz; az Orders nem tud róluk.
 - Mindezt a [`ModuleBoundariesTest`](tests/Architecture/ModuleBoundariesTest.php) kényszeríti ki. Ha valaki átnyúl egy határon, a CI piros lesz.
 
 ## Számlázás: NAV Online Számla 3.0
@@ -116,6 +127,21 @@ Fizetett állapotba lépéskor az `Invoicing` modul automatikusan számlát áll
 - **A beküldés** (`php artisan invoicing:submit`) technikai felhasználóval működik, alapból a NAV teszt-környezetébe. Hitelesítő adat nélkül biztonságosan nem csinál semmit. *A demó ezt a lépést nem futtatja; az ellenőrzés az XSD-ig tart.*
 
 Végpontok: `GET /api/invoicing/invoices` · `GET /api/invoicing/invoices/{id}` · `GET /api/invoicing/invoices/{id}/xml`
+
+## Webshop-integráció
+
+A `Channels` modul egy webshop mögötti ERP tipikus feladatait oldja meg:
+
+- **Rendelésátvétel webhookkal** (`POST /api/channels/{shopify|woocommerce}/orders`):
+  - **Hitelesítés:** `base64(HMAC-SHA256)` aláírás a platform saját fejlécében (`X-Shopify-Hmac-Sha256`, `X-WC-Webhook-Signature`), időálló összehasonlítással. Titok nélkül a csatorna minden kérést elutasít.
+  - **Idempotencia:** a webshopok újrapróbálkoznak, ezért `(channel, external_id)` egyedi index és ütközéskezelés véd a dupla rendeléstől és a dupla készletfoglalástól, párhuzamos kézbesítésnél is.
+  - **Ugyanaz az út, mint a kézi rendelésnél:** `PlaceOrder` (tranzakció, soronkénti zárolás, CRM-idővonal), fizetett rendelésnél `TransitionOrder` → automatikus NAV-számla. Adószám nélküli vevőnél `PRIVATE_PERSON` számla.
+  - **Ami nem importálható, nem vész el:** ismeretlen cikkszám vagy készlethiány esetén „elutasítva” állapotba kerül, okkal együtt, mellékhatás nélkül (az ügyfél sem jön létre). A válasz 200, hogy a webshop ne küldje újra; a döntés az ERP-ben születik.
+  - Az ügyfelet e-mail-cím alapján keresi vagy hozza létre; meglévő ügyfél adatait nem írja felül. Magyar címnél magyar névsorrend.
+- **Termékfeedek** élő készlettel és bruttó árral: `GET /feeds/google-merchant.xml` (RSS 2.0, `g:` névtér) és `GET /feeds/arukereso.xml` (az Árukereső kötelező mezőivel: `identifier`, `manufacturer`, `category`, `price`, `netprice` …).
+- **Marketing-riport** (`GET /api/channels/report`): bevétel csatornánként és UTM-forrásonként. A Shopify a `landing_site` URL-jéből, a WooCommerce a beépített rendelés-attribúcióból (`_wc_order_attribution_utm_*`) adja a forrást.
+
+Beállítás a `.env`-ben: `SHOPIFY_WEBHOOK_SECRET`, `WOOCOMMERCE_WEBHOOK_SECRET`, `ERP_SHOP_URL`.
 
 ## Kifogyási előrejelzés
 
@@ -207,6 +233,9 @@ A parancs a modul `draft.yaml`-jéből a modul névterébe generál modellt, mig
 | GET | `/api/crm/customers/{id}/summary` | AI-összefoglaló |
 | GET | `/api/invoicing/invoices` · `/{id}` · `/{id}/xml` | Számlák, NAV XML |
 | POST | `/api/assistant/ask` | Természetes nyelvű kérdés az ERP-nek |
+| POST | `/api/channels/{shopify\|woocommerce}/orders` | Webshop-webhook (HMAC-aláírással) |
+| GET | `/api/channels/orders` · `/api/channels/report` | Beérkezett webshop-rendelések · bevétel csatorna és marketingforrás szerint |
+| GET | `/feeds/google-merchant.xml` · `/feeds/arukereso.xml` | Termékfeedek |
 
 ## Képernyők
 
@@ -221,15 +250,17 @@ A parancs a modul `draft.yaml`-jéből a modul névterébe generál modellt, mig
 | ![](docs/screenshots/06-szamla.png) | ![](docs/screenshots/07-nav-xml.png) |
 | **Készlet: előrejelzés, készlettörténet, napló** | **Ügyfél: helyzetkép, idővonal, teendők** |
 | ![](docs/screenshots/04-keszlet.png) | ![](docs/screenshots/05-ugyfelek.png) |
-| **Sötét mód** | **Mobil** |
-| ![](docs/screenshots/09-sotet-mod.png) | ![](docs/screenshots/10-mobil.png) |
+| **Webshop: marketingforrás, beérkezett rendelések** | **Sötét mód** |
+| ![](docs/screenshots/12-webshop.png) | ![](docs/screenshots/09-sotet-mod.png) |
+| **Mobil** | |
+| ![](docs/screenshots/10-mobil.png) | |
 
 ## Mit csinálnék a következő sprintben
 
 - Sztornó számla (`STORNO` módosító okirat) a `storno_required` számlákhoz, és a NAV-tranzakció státuszának lekérdezése
 - Hitelesítés Sanctummal, szerepkörök Policy-kkel (raktáros / értékesítő / könyvelő)
 - Valós idejű vezérlőpult Laravel Reverbbel (új rendelés és készletváltozás push-ban)
-- Webshop-szinkron (WooCommerce/Shopify webhook → `PlaceOrder`), Elasticsearch-alapú termékkeresés nagy katalógushoz
+- Kétirányú webshop-szinkron: készlet- és ár-visszaírás a Shopify/WooCommerce API-ba, sorba állított (queue) webhook-feldolgozás nagy forgalomhoz
 
 ## Fejlesztés
 
