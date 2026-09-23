@@ -1,29 +1,139 @@
 @import 'tailwindcss';
+@import '@fontsource-variable/inter';
+@import '@fontsource-variable/jetbrains-mono';
 
-@source '../js/**/*.vue';
+@source '../js/**/*.{vue,js}';
 @source '../views/**/*.blade.php';
 
-@theme {
-    --font-sans: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-    --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-    --color-brand-50: #eef6ff;
-    --color-brand-100: #d9eaff;
-    --color-brand-500: #2f6fed;
-    --color-brand-600: #1f5ad6;
-    --color-brand-700: #1a48ad;
+/* Metrikailag az Interhez igazított tartalék: amíg a webfont tölt, a szöveg nem ugrik (CLS). */
+@font-face {
+    font-family: 'Inter Fallback';
+    src: local('Arial');
+    ascent-override: 90.49%;
+    descent-override: 22.56%;
+    line-gap-override: 0%;
+    size-adjust: 107.06%;
 }
 
+@custom-variant dark (&:where(.dark, .dark *));
+
+/*
+ * Szemantikus tokenek: a komponensek soha nem nyers színt használnak, hanem
+ * szerepet (felület, vonal, halvány szöveg, akcentus). A sötét téma csak a
+ * tokeneket írja felül, így minden komponens automatikusan követi.
+ */
+:root {
+    --bg: #f7f7f8;
+    --surface: #ffffff;
+    --surface-2: #f4f4f5;
+    --elevated: #ffffff;
+    --line: #e7e7ea;
+    --line-strong: #d4d4d8;
+    --fg: #18181b;
+    --fg-muted: #52525b;
+    --fg-subtle: #686871;
+    --accent: #4f46e5;
+    --accent-hover: #4338ca;
+    --accent-fg: #ffffff;
+    --success: #047857;
+    --warning: #b45309;
+    --danger: #c81e1e;
+    --info: #1d4ed8;
+    --ring: color-mix(in oklab, var(--accent) 45%, transparent);
+    --shadow-pop: 0 1px 2px rgb(0 0 0 / 0.04), 0 8px 24px -6px rgb(0 0 0 / 0.12), 0 24px 48px -12px rgb(0 0 0 / 0.12);
+    color-scheme: light;
+}
+
+.dark {
+    --bg: #09090b;
+    --surface: #111114;
+    --surface-2: #18181c;
+    --elevated: #17171b;
+    --line: #232329;
+    --line-strong: #33333b;
+    --fg: #f4f4f5;
+    --fg-muted: #a1a1aa;
+    --fg-subtle: #8b8b95;
+    --accent: #7c74ff;
+    --accent-hover: #918bff;
+    --accent-fg: #0b0b12;
+    --success: #34d399;
+    --warning: #fbbf24;
+    --danger: #f87171;
+    --info: #60a5fa;
+    --shadow-pop: 0 0 0 1px rgb(255 255 255 / 0.04), 0 16px 40px -8px rgb(0 0 0 / 0.6);
+    color-scheme: dark;
+}
+
+@theme inline {
+    --font-sans: 'Inter Variable', 'Inter Fallback', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+    --font-mono: 'JetBrains Mono Variable', ui-monospace, SFMono-Regular, Menlo, monospace;
+
+    --color-bg: var(--bg);
+    --color-surface: var(--surface);
+    --color-surface-2: var(--surface-2);
+    --color-elevated: var(--elevated);
+    --color-line: var(--line);
+    --color-line-strong: var(--line-strong);
+    --color-fg: var(--fg);
+    --color-muted: var(--fg-muted);
+    --color-subtle: var(--fg-subtle);
+    --color-accent: var(--accent);
+    --color-accent-hover: var(--accent-hover);
+    --color-accent-fg: var(--accent-fg);
+    --color-success: var(--success);
+    --color-warning: var(--warning);
+    --color-danger: var(--danger);
+    --color-info: var(--info);
+
+    --shadow-pop: var(--shadow-pop);
+
+    --animate-in: fade-in 160ms ease-out;
+    --animate-drawer: drawer-in 260ms cubic-bezier(0.32, 0.72, 0, 1);
+    --animate-pop: pop-in 180ms cubic-bezier(0.32, 0.72, 0, 1);
+    --animate-shimmer: shimmer 1.4s ease-in-out infinite;
+}
+
+@keyframes fade-in { from { opacity: 0; } }
+@keyframes drawer-in { from { transform: translateX(24px); opacity: 0; } }
+@keyframes pop-in { from { transform: translateY(6px) scale(0.98); opacity: 0; } }
+@keyframes shimmer { 0%, 100% { opacity: 0.55; } 50% { opacity: 1; } }
+
 @layer base {
-    body { @apply bg-slate-50 text-slate-800 antialiased; }
-    .num { font-variant-numeric: tabular-nums; }
+    html { font-feature-settings: 'cv11', 'ss01', 'ss03'; -webkit-tap-highlight-color: transparent; }
+    body { background: var(--bg); color: var(--fg); -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+    ::selection { background: color-mix(in oklab, var(--accent) 25%, transparent); }
+    :focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; border-radius: 6px; }
+    * { scrollbar-width: thin; scrollbar-color: var(--line-strong) transparent; }
+    .num { font-variant-numeric: tabular-nums; font-feature-settings: 'tnum', 'cv11'; }
+    @media (prefers-reduced-motion: reduce) {
+        *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+    }
 }
 
 @layer components {
-    .card { @apply rounded-xl border border-slate-200 bg-white; }
-    .btn { @apply inline-flex items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium transition focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-1 disabled:cursor-not-allowed disabled:opacity-50; }
-    .btn-primary { @apply inline-flex items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium transition focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-1 disabled:cursor-not-allowed disabled:opacity-50 bg-brand-600 text-white hover:bg-brand-700; }
-    .btn-ghost { @apply inline-flex items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium transition focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-1 disabled:cursor-not-allowed disabled:opacity-50 border border-slate-200 bg-white text-slate-700 hover:bg-slate-50; }
-    .input { @apply w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-100 focus:outline-none; }
-    .th { @apply px-4 py-2.5 text-left text-xs font-medium tracking-wide text-slate-500 uppercase; }
-    .td { @apply px-4 py-3 text-sm; }
+    .card { border-radius: 14px; border: 1px solid var(--line); background: var(--surface); }
+    .soft-success { color: var(--success); background: color-mix(in oklab, var(--success) 8%, var(--surface)); }
+    .soft-warning { color: var(--warning); background: color-mix(in oklab, var(--warning) 8%, var(--surface)); }
+    .soft-danger { color: var(--danger); background: color-mix(in oklab, var(--danger) 8%, var(--surface)); }
+    .soft-info { color: var(--info); background: color-mix(in oklab, var(--info) 8%, var(--surface)); }
+    .soft-accent { color: var(--accent); background: color-mix(in oklab, var(--accent) 8%, var(--surface)); }
+    .soft-neutral { color: var(--fg-muted); background: var(--surface-2); }
+    .field {
+        width: 100%; height: 38px; border-radius: 10px; border: 1px solid var(--line-strong); background: var(--surface);
+        padding: 0 12px; font-size: 14px; color: var(--fg); transition: border-color 120ms, box-shadow 120ms;
+    }
+    .field::placeholder { color: var(--fg-subtle); }
+    .field:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--ring); }
+    textarea.field { height: auto; padding: 10px 12px; }
+    select.field { appearance: none; padding-right: 32px; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' stroke='%238a8a93' stroke-width='2' viewBox='0 0 24 24'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 10px center; }
+    .label { display: block; margin-bottom: 6px; font-size: 13px; font-weight: 500; color: var(--fg-muted); }
+    .skeleton { border-radius: 8px; background: var(--surface-2); animation: var(--animate-shimmer); }
+}
+
+@media print {
+    body * { visibility: hidden; }
+    .print-area, .print-area * { visibility: visible; }
+    .print-area { position: absolute; inset: 0; box-shadow: none !important; border: 0 !important; }
+    .no-print { display: none !important; }
 }
