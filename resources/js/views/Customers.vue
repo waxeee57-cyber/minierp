@@ -69,7 +69,7 @@ function onCreated(c) {
                         <Avatar :name="c.company ?? c.name" size="sm" />
                         <div class="min-w-0 flex-1">
                             <div class="truncate text-sm font-medium">{{ c.company ?? c.name }}</div>
-                            <div class="truncate text-xs text-subtle">{{ c.name }}<template v-if="c.city"> · {{ c.city }}</template></div>
+                            <div class="truncate text-xs text-subtle">{{ c.company ? c.name : 'Magánszemély' }}<template v-if="c.city"> · {{ c.city }}</template></div>
                         </div>
                         <span v-if="c.open_tasks_count" class="num rounded-full px-1.5 text-[11px] leading-5 font-semibold soft-warning" :title="`${c.open_tasks_count} nyitott teendő`">{{ c.open_tasks_count }}</span>
                     </RouterLink>

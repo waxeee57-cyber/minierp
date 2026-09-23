@@ -48,6 +48,18 @@ return [
         ],
     ],
 
+    // Webshop-csatornák. A webhook-titok a webshop admin felületén megadott titokkal egyezik;
+    // titok nélkül az adott csatorna minden kérést elutasít.
+    'channels' => [
+        'shop_url' => env('ERP_SHOP_URL', 'https://irodatechnika-demo.example'),
+        'product_url' => env('ERP_SHOP_PRODUCT_URL', '{shop}/termek/{sku}'),
+        'image_url' => env('ERP_SHOP_IMAGE_URL', '{shop}/kepek/{sku}.jpg'),
+        'secrets' => [
+            'shopify' => env('SHOPIFY_WEBHOOK_SECRET'),
+            'woocommerce' => env('WOOCOMMERCE_WEBHOOK_SECRET'),
+        ],
+    ],
+
     // AI (Laravel AI SDK). A kulcs a config/ai.php szolgáltatói közül jön, pl.
     // ANTHROPIC_API_KEY. Kulcs nélkül a szabályalapú tartalék fut.
     'ai' => [

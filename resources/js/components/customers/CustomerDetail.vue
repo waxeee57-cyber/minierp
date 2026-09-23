@@ -109,7 +109,7 @@ const types = [
                 <Avatar :name="c.company ?? c.name" size="lg" />
                 <div class="min-w-0 flex-1">
                     <h2 class="text-xl font-semibold tracking-tight">{{ c.company ?? c.name }}</h2>
-                    <p class="text-sm text-muted">{{ c.name }}</p>
+                    <p class="text-sm text-muted">{{ c.company ? c.name : 'Magánszemély' }}</p>
                     <div class="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[13px] text-subtle">
                         <a v-if="c.email" :href="`mailto:${c.email}`" class="flex min-w-0 items-center gap-1.5 break-all hover:text-accent"><Mail class="size-3.5" />{{ c.email }}</a>
                         <a v-if="c.phone" :href="`tel:${c.phone.replace(/\s/g, '')}`" class="flex items-center gap-1.5 hover:text-accent"><Phone class="size-3.5" />{{ c.phone }}</a>

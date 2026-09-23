@@ -3,6 +3,8 @@ models:
   Product:
     sku: string:40 unique
     name: string:160
+    brand: string:80 nullable
+    category: string:160 nullable
     description: text nullable
     unit_price: unsignedInteger
     stock: integer default:0

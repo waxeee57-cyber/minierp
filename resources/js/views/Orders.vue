@@ -105,7 +105,7 @@ function onCreated(o) {
                                 <Avatar :name="o.customer.company ?? o.customer.name" size="sm" />
                                 <div class="min-w-0">
                                     <RouterLink :to="{ name: 'orders', params: { id: o.id }, query: route.query }" class="block truncate text-sm font-medium outline-none" @click.stop>{{ o.customer.company ?? o.customer.name }}</RouterLink>
-                                    <div class="truncate text-xs text-subtle">{{ o.customer.name }}</div>
+                                    <div class="truncate text-xs text-subtle">{{ o.customer.company ? o.customer.name : 'Magánszemély' }}</div>
                                 </div>
                             </div>
                         </td>

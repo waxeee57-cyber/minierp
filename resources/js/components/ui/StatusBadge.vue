@@ -11,6 +11,8 @@ const tones = {
     submitted: 'success',
     invalid: 'danger',
     storno_required: 'warning',
+    imported: 'success',
+    rejected: 'danger',
 };
 </script>
 

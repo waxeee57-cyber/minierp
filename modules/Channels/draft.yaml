@@ -1,0 +1,16 @@
+# Channels modul domain-modellje (webshop-integráció). Generálás: php artisan erp:blueprint Channels
+models:
+  ChannelOrder:
+    channel: string:30
+    external_id: string:80
+    external_number: string:80 nullable
+    order_id: unsignedBigInteger nullable index
+    order_number: string:40 nullable
+    status: string:20 index
+    error: text nullable
+    customer_email: string:160 nullable
+    total: unsignedInteger default:0
+    utm_source: string:80 nullable index
+    utm_medium: string:80 nullable
+    utm_campaign: string:120 nullable
+    payload: json

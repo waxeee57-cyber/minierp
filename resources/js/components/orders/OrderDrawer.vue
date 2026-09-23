@@ -1,6 +1,6 @@
 <script setup>
 import { computed, ref, watch } from 'vue';
-import { Ban, Check, ChevronRight, FileText, Truck, Wallet } from 'lucide-vue-next';
+import { Ban, Check, ChevronRight, FileText, Store, Truck, Wallet } from 'lucide-vue-next';
 import Avatar from '../ui/Avatar.vue';
 import Button from '../ui/Button.vue';
 import Drawer from '../ui/Drawer.vue';
@@ -14,14 +14,20 @@ const props = defineProps({ id: [String, Number] });
 const emit = defineEmits(['close', 'changed']);
 const order = ref(null);
 const invoice = ref(null);
+const source = ref(null);
 const busy = ref(null);
 const confirmCancel = ref(false);
 
 async function load() {
     try {
-        const [o, inv] = await Promise.all([api(`/orders/${props.id}`), api(`/invoicing/invoices?order_id=${props.id}`)]);
+        const [o, inv, ch] = await Promise.all([
+            api(`/orders/${props.id}`),
+            api(`/invoicing/invoices?order_id=${props.id}`),
+            api(`/channels/orders?order_id=${props.id}`),
+        ]);
         order.value = o.data;
         invoice.value = inv.data[0] ?? null;
+        source.value = ch.data[0] ?? null;
     } catch (e) {
         toastError(e);
         emit('close');
@@ -73,7 +79,12 @@ async function transition(status) {
                 <h2 class="font-mono text-base font-semibold tracking-tight">{{ order?.number ?? '…' }}</h2>
                 <StatusBadge v-if="order" :status="order.status" :label="order.status_label" />
             </div>
-            <p v-if="order" class="mt-0.5 text-sm text-subtle">Leadva {{ dateTime(order.placed_at) }}</p>
+            <p v-if="order" class="mt-0.5 text-sm text-subtle">
+                Leadva {{ dateTime(order.placed_at) }}
+                <RouterLink v-if="source" to="/channels" class="ml-1 inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-xs font-medium soft-accent hover:underline">
+                    <Store class="size-3" />{{ source.channel_label }} {{ source.external_number }}<template v-if="source.utm_source"> · {{ source.utm_source }}</template>
+                </RouterLink>
+            </p>
         </template>
 
         <div v-if="!order" class="space-y-4"><div class="skeleton h-16" /><div class="skeleton h-40" /><div class="skeleton h-24" /></div>
@@ -96,7 +107,7 @@ async function transition(status) {
                 <Avatar :name="order.customer.company ?? order.customer.name" />
                 <div class="min-w-0 flex-1">
                     <div class="truncate text-sm font-medium">{{ order.customer.company ?? order.customer.name }}</div>
-                    <div class="truncate text-xs text-subtle">{{ order.customer.name }}</div>
+                    <div class="truncate text-xs text-subtle">{{ order.customer.company ? order.customer.name : 'Magánszemély' }}</div>
                 </div>
                 <ChevronRight class="size-4 text-subtle" />
             </RouterLink>

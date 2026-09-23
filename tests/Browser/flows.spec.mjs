@@ -1,11 +1,12 @@
 import { expect, test } from '@playwright/test';
 
 // Minden teszt figyeli a konzolt: futásidejű JS-hiba = bukás.
-test.beforeEach(async ({ page }, info) => {
-    info.errors = [];
-    page.on('pageerror', (e) => info.errors.push(e.message));
+let pageErrors = [];
+test.beforeEach(async ({ page }) => {
+    pageErrors = [];
+    page.on('pageerror', (e) => pageErrors.push(e.message));
 });
-test.afterEach(async ({}, info) => expect(info.errors, 'futásidejű JS-hiba').toEqual([]));
+test.afterEach(async () => expect(pageErrors, 'futásidejű JS-hiba').toEqual([]));
 
 test('vezérlőpult: KPI-k, grafikon, asszisztens kulcs nélkül is válaszol @mobil', async ({ page }) => {
     await page.goto('/');
@@ -108,4 +109,15 @@ test('mobil: alsó fülsáv navigáció és rendelés részletei @mobil', async 
     await expect(page).toHaveURL(/\/orders$/);
     await page.locator('ul li a').first().click();
     await expect(page.getByText('Tételek')).toBeVisible();
+});
+
+test('webshop: marketing-riport, beérkezett rendelések, integráció', async ({ page }) => {
+    await page.goto('/channels');
+    await expect(page.getByText('Bevétel marketingforrás szerint')).toBeVisible();
+    await expect(page.getByText('Google Ads', { exact: true })).toBeVisible();
+    await expect(page.getByText(/Ismeretlen vagy inaktív cikkszám/)).toBeVisible();
+    await expect(page.getByText('Google Merchant Center termékfeed')).toBeVisible();
+    await page.locator('a[href^="/orders/"]').first().click();
+    await expect(page).toHaveURL(/\/orders\/\d+$/);
+    await expect(page.getByRole('link', { name: /Shopify|WooCommerce/ })).toBeVisible();
 });

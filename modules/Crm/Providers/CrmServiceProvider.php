@@ -11,8 +11,10 @@ use Illuminate\Support\ServiceProvider;
 use Modules\Crm\Ai\CustomerBriefAgent;
 use Modules\Crm\Console\FollowUpCommand;
 use Modules\Crm\Contracts\CustomerDirectory;
+use Modules\Crm\Contracts\CustomerRegistry;
 use Modules\Crm\Contracts\Timeline;
 use Modules\Crm\Services\EloquentCustomerDirectory;
+use Modules\Crm\Services\EloquentCustomerRegistry;
 use Modules\Crm\Services\EloquentTimeline;
 use Modules\Crm\Services\Summary\AiSummarizer;
 use Modules\Crm\Services\Summary\CustomerSummarizer;
@@ -24,6 +26,7 @@ class CrmServiceProvider extends ServiceProvider
     {
         $this->app->singleton(Timeline::class, EloquentTimeline::class);
         $this->app->singleton(CustomerDirectory::class, EloquentCustomerDirectory::class);
+        $this->app->singleton(CustomerRegistry::class, EloquentCustomerRegistry::class);
 
         // AI csak akkor, ha a kiválasztott szolgáltatóhoz van kulcs; különben szabályalapú.
         $this->app->bind(CustomerSummarizer::class, fn ($app) => CustomerBriefAgent::enabled()

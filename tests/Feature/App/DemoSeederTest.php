@@ -3,7 +3,9 @@
 namespace Tests\Feature\App;
 
 use Database\Seeders\DemoSeeder;
+use Database\Seeders\WebshopDemoSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Modules\Channels\Models\ChannelOrder;
 use Modules\Inventory\Models\Product;
 use Modules\Invoicing\Enums\NavStatus;
 use Modules\Invoicing\Models\Invoice;
@@ -22,7 +24,7 @@ class DemoSeederTest extends TestCase
 
     public function test_demo_data_is_chronologically_and_financially_consistent(): void
     {
-        $this->seed(DemoSeeder::class);
+        $this->seed([DemoSeeder::class, WebshopDemoSeeder::class]);
 
         $this->assertGreaterThan(50, Order::count());
 
@@ -37,6 +39,11 @@ class DemoSeederTest extends TestCase
             if ($o->shipped_at) {
                 $this->assertTrue($o->shipped_at->gte($o->paid_at), "{$o->number}: kiszállítás a fizetés előtt");
             }
+        }
+
+        // Webshop-rendelések: az elmúlt 30 napban, nem a jövőben.
+        foreach (ChannelOrder::all() as $c) {
+            $this->assertTrue($c->created_at->between(now()->subDays(31), now()), "webshop-rendelés időn kívül: {$c->created_at}");
         }
 
         // Készletegyenleg: a termék készlete pontosan a naplózott mozgások összege.

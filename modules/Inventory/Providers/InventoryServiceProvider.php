@@ -7,7 +7,9 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
 use Modules\Inventory\Console\LowStockAlertCommand;
 use Modules\Inventory\Contracts\DemandForecast;
+use Modules\Inventory\Contracts\ProductCatalog;
 use Modules\Inventory\Contracts\StockLedger;
+use Modules\Inventory\Services\EloquentProductCatalog;
 use Modules\Inventory\Services\EloquentStockLedger;
 use Modules\Inventory\Services\MovementBasedForecast;
 
@@ -17,6 +19,7 @@ class InventoryServiceProvider extends ServiceProvider
     {
         $this->app->singleton(StockLedger::class, EloquentStockLedger::class);
         $this->app->singleton(DemandForecast::class, MovementBasedForecast::class);
+        $this->app->singleton(ProductCatalog::class, EloquentProductCatalog::class);
     }
 
     public function boot(): void

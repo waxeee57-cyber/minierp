@@ -1,7 +1,7 @@
 <script setup>
 import { onBeforeUnmount, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { Github, LayoutDashboard, Moon, Package, Receipt, Search, ShoppingCart, Sun, Users } from 'lucide-vue-next';
+import { Github, LayoutDashboard, Moon, Package, Receipt, Search, ShoppingCart, Store, Sun, Users } from 'lucide-vue-next';
 import CommandPalette from './components/CommandPalette.vue';
 import Kbd from './components/ui/Kbd.vue';
 import Toaster from './components/ui/Toaster.vue';
@@ -14,15 +14,16 @@ const router = useRouter();
 const isMac = /Mac|iPhone|iPad/.test(navigator.platform);
 
 const nav = [
-    { name: 'dashboard', to: '/', label: 'Vezérlőpult', short: 'Áttekintés', icon: LayoutDashboard },
+    { name: 'dashboard', to: '/', label: 'Vezérlőpult', short: 'Főoldal', icon: LayoutDashboard },
     { name: 'orders', to: '/orders', label: 'Rendelések', short: 'Rendelés', icon: ShoppingCart, badge: () => badges.pending, tone: 'warning' },
     { name: 'inventory', to: '/inventory', label: 'Készlet', short: 'Készlet', icon: Package, badge: () => badges.lowStock, tone: 'danger' },
     { name: 'customers', to: '/customers', label: 'Ügyfelek', short: 'Ügyfél', icon: Users, badge: () => badges.overdueTasks, tone: 'danger' },
     { name: 'invoices', to: '/invoices', label: 'Számlák', short: 'Számla', icon: Receipt },
+    { name: 'channels', to: '/channels', label: 'Webshop', short: 'Webshop', icon: Store },
 ];
 
 // Billentyűparancsok: ⌘K / Ctrl+K / „/” paletta, „C” új rendelés, „G” + betű ugrás.
-const jumps = { d: '/', o: '/orders', k: '/inventory', u: '/customers', s: '/invoices' };
+const jumps = { d: '/', o: '/orders', k: '/inventory', u: '/customers', s: '/invoices', w: '/channels' };
 let gPressed = 0;
 function onKey(e) {
     if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
@@ -116,8 +117,8 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey));
         </main>
 
         <!-- Alsó fülsáv (mobil) -->
-        <nav class="fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t border-line bg-bg/85 pb-[env(safe-area-inset-bottom)] backdrop-blur-lg lg:hidden" aria-label="Fő navigáció">
-            <RouterLink v-for="n in nav" :key="n.name" :to="n.to" class="relative flex h-16 flex-col items-center justify-center gap-1 text-[11px] font-medium" :class="route.name === n.name ? 'text-accent' : 'text-subtle'">
+        <nav class="fixed inset-x-0 bottom-0 z-30 grid grid-cols-6 border-t border-line bg-bg/85 pb-[env(safe-area-inset-bottom)] backdrop-blur-lg lg:hidden" aria-label="Fő navigáció">
+            <RouterLink v-for="n in nav" :key="n.name" :to="n.to" class="relative flex h-16 flex-col items-center justify-center gap-1 text-[10.5px] font-medium" :class="route.name === n.name ? 'text-accent' : 'text-subtle'">
                 <component :is="n.icon" class="size-5" />
                 {{ n.short }}
                 <span v-if="n.badge?.()" class="num absolute top-2 left-[calc(50%+6px)] min-w-4 rounded-full bg-danger px-1 text-center text-[10px] leading-4 font-semibold text-white">{{ n.badge() }}</span>

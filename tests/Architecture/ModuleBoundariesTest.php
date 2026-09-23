@@ -26,6 +26,9 @@ class ModuleBoundariesTest extends TestCase
             'Az AI-asszisztens nem írhat (nincs készlet- és idővonal-írás)' => ['Assistant', ['Modules\\Inventory\\Contracts\\StockLedger', 'Modules\\Crm\\Contracts\\Timeline']],
             'A számlázás nem nyúl a készlethez' => ['Invoicing', ['Modules\\Inventory\\']],
             'Az Orders nem tud a számlázásról' => ['Orders', ['Modules\\Invoicing\\']],
+            'A webshop-csatornák csak szerződésen és publikus akción át érnek más modulhoz' => ['Channels', ['Modules\\Crm\\Models', 'Modules\\Orders\\Models', 'Modules\\Inventory\\Models', 'Modules\\Invoicing\\', 'Modules\\Crm\\Services', 'Modules\\Orders\\Services', 'Modules\\Inventory\\Services', 'Modules\\Inventory\\Contracts\\StockLedger']],
+            'Más modul nem tud a webshop-csatornákról' => ['Orders', ['Modules\\Channels\\']],
+            'Az AI-asszisztens nem hozhat létre ügyfelet' => ['Assistant', ['Modules\\Crm\\Contracts\\CustomerRegistry']],
         ];
     }
 

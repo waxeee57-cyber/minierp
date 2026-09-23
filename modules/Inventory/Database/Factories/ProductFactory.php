@@ -14,6 +14,8 @@ class ProductFactory extends Factory
         return [
             'sku' => strtoupper(fake()->unique()->bothify('??-####')),
             'name' => fake()->words(3, true),
+            'brand' => fake()->company(),
+            'category' => 'Számítástechnika > Kiegészítők',
             'description' => fake()->sentence(),
             'unit_price' => fake()->numberBetween(10, 500) * 100,
             'stock' => fake()->numberBetween(10, 80),

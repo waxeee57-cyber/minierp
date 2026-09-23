@@ -30,21 +30,21 @@ class DemoSeeder extends Seeder
         Carbon::setTestNow(now()->subDays(70)->setTime(8, 0));
 
         $products = collect([
-            ['IT-1001', 'Lenovo ThinkPad E14 laptop', 329_900, 16, 4],
-            ['IT-1002', 'Dell 24" IPS monitor', 64_900, 40, 6],
-            ['IT-1003', 'Logitech MX Keys billentyűzet', 42_900, 40, 5],
-            ['IT-1004', 'Logitech MX Master 3S egér', 36_900, 22, 6],
-            ['IT-1005', 'USB-C dokkoló, 12 portos', 54_900, 30, 4],
-            ['IT-1006', 'Jabra Evolve2 headset', 89_900, 16, 4],
-            ['IT-1007', 'HP LaserJet nyomtató', 119_900, 10, 2],
-            ['IT-1008', 'A4 másolópapír, 5 csomag', 12_490, 150, 30],
-            ['IT-1009', 'Samsung 1 TB SSD', 38_900, 40, 5],
-            ['IT-1010', 'Ergonomikus laptopállvány', 14_900, 18, 5],
-            ['IT-1011', 'Cat6 patchkábel, 10 db', 5_990, 80, 15],
-            ['IT-1012', 'Webkamera, Full HD', 24_900, 35, 4],
+            ['IT-1001', 'Lenovo ThinkPad E14 laptop', 329_900, 16, 4, 'Lenovo', 'Számítástechnika > Laptopok'],
+            ['IT-1002', 'Dell 24" IPS monitor', 64_900, 40, 6, 'Dell', 'Számítástechnika > Monitorok'],
+            ['IT-1003', 'Logitech MX Keys billentyűzet', 42_900, 40, 5, 'Logitech', 'Számítástechnika > Perifériák > Billentyűzetek'],
+            ['IT-1004', 'Logitech MX Master 3S egér', 36_900, 22, 6, 'Logitech', 'Számítástechnika > Perifériák > Egerek'],
+            ['IT-1005', 'USB-C dokkoló, 12 portos', 54_900, 30, 4, 'Ugreen', 'Számítástechnika > Kiegészítők > Dokkolók'],
+            ['IT-1006', 'Jabra Evolve2 headset', 89_900, 16, 4, 'Jabra', 'Számítástechnika > Perifériák > Headsetek'],
+            ['IT-1007', 'HP LaserJet nyomtató', 119_900, 10, 2, 'HP', 'Irodatechnika > Nyomtatók'],
+            ['IT-1008', 'A4 másolópapír, 5 csomag', 12_490, 150, 30, 'Navigator', 'Irodaszer > Papír'],
+            ['IT-1009', 'Samsung 1 TB SSD', 38_900, 40, 5, 'Samsung', 'Számítástechnika > Adattárolók'],
+            ['IT-1010', 'Ergonomikus laptopállvány', 14_900, 18, 5, 'Trust', 'Számítástechnika > Kiegészítők'],
+            ['IT-1011', 'Cat6 patchkábel, 10 db', 5_990, 80, 15, 'Goobay', 'Hálózat > Kábelek'],
+            ['IT-1012', 'Webkamera, Full HD', 24_900, 35, 4, 'Logitech', 'Számítástechnika > Perifériák > Webkamerák'],
         ])->map(function (array $p) use ($ledger) {
-            [$sku, $name, $price, $opening, $reorder] = $p;
-            $product = Product::create(['sku' => $sku, 'name' => $name, 'unit_price' => $price, 'stock' => 0, 'reorder_level' => $reorder]);
+            [$sku, $name, $price, $opening, $reorder, $brand, $category] = $p;
+            $product = Product::create(['sku' => $sku, 'name' => $name, 'brand' => $brand, 'category' => $category, 'unit_price' => $price, 'stock' => 0, 'reorder_level' => $reorder]);
 
             return $ledger->record($product, $opening, 'purchase', 'NYITÓ', 'Nyitókészlet');
         });

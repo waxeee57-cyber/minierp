@@ -2,6 +2,7 @@
 
 use App\Providers\AppServiceProvider;
 use Modules\Assistant\Providers\AssistantServiceProvider;
+use Modules\Channels\Providers\ChannelsServiceProvider;
 use Modules\Crm\Providers\CrmServiceProvider;
 use Modules\Inventory\Providers\InventoryServiceProvider;
 use Modules\Invoicing\Providers\InvoicingServiceProvider;
@@ -16,4 +17,5 @@ return [
     OrdersServiceProvider::class,
     InvoicingServiceProvider::class,
     AssistantServiceProvider::class,
+    ChannelsServiceProvider::class,
 ];

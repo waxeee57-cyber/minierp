@@ -2,7 +2,7 @@
 import { computed, nextTick, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import {
-    Box, CornerDownLeft, LayoutDashboard, Moon, Package, Plus, Receipt, Search, ShoppingCart, Sparkles, Sun, UserPlus, Users,
+    Box, CornerDownLeft, Store, LayoutDashboard, Moon, Package, Plus, Receipt, Search, ShoppingCart, Sparkles, Sun, UserPlus, Users,
 } from 'lucide-vue-next';
 import { api } from '../lib/api.js';
 import { paletteOpen } from '../lib/palette.js';
@@ -32,6 +32,7 @@ const actions = computed(() => [
     { group: 'Ugrás', icon: Package, title: 'Készlet', hint: 'G K', run: () => router.push('/inventory') },
     { group: 'Ugrás', icon: Users, title: 'Ügyfelek', hint: 'G U', run: () => router.push('/customers') },
     { group: 'Ugrás', icon: Receipt, title: 'Számlák', hint: 'G S', run: () => router.push('/invoices') },
+    { group: 'Ugrás', icon: Store, title: 'Webshop', hint: 'G W', run: () => router.push('/channels') },
     { group: 'Művelet', icon: Plus, title: 'Új rendelés', hint: 'C', run: () => router.push('/orders/new') },
     { group: 'Művelet', icon: UserPlus, title: 'Új ügyfél', run: () => router.push('/customers/new') },
     { group: 'Művelet', icon: Box, title: 'Új termék', run: () => router.push('/inventory/new') },
