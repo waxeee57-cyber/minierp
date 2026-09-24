@@ -134,6 +134,12 @@ if ($stale) {
 // A belépő az api/ mappában van, de a Laravel a gyökérről szolgál ki: ha a
 // SCRIPT_NAME /api/index.php maradna, a Symfony „/api” base URL-t vezetne le,
 // és minden /api/* kérés elveszítené az előtagját.
+// A Vercel csak HTTPS-en szolgál ki, a függvény viszont belül HTTP-n kapja a
+// kérést; enélkül a Vite-assetek http:// URL-t kapnának (mixed content).
+$_SERVER['HTTPS'] = 'on';
+$_SERVER['SERVER_PORT'] = '443';
+$_SERVER['REQUEST_SCHEME'] = 'https';
+
 $_SERVER['SCRIPT_FILENAME'] = dirname(__DIR__).'/public/index.php';
 $_SERVER['SCRIPT_NAME'] = '/index.php';
 $_SERVER['PHP_SELF'] = '/index.php';
