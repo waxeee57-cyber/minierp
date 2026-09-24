@@ -23,7 +23,7 @@ class InvoiceController extends Controller
             $query
                 ->when($request->integer('order_id'), fn ($q, $id) => $q->where('order_id', $id))
                 ->when($request->input('nav_status'), fn ($q, $s) => $q->where('nav_status', $s))
-                ->when($request->string('search')->toString(), fn ($q, $t) => $q->where('number', 'like', "%{$t}%"))
+                ->when($request->string('search')->toString(), fn ($q, $t) => $q->whereLike('number', "%{$t}%"))
                 ->latest('id')
                 ->paginate(min($request->integer('per_page', 25), 100)),
         )->additional(['meta' => ['totals' => [

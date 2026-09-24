@@ -9,7 +9,7 @@ Rendelés-, készlet-, ügyfél- és számlakezelő rendszer egy kitalált iroda
 - **Termékszintű felülettel:** ⌘K parancspaletta, mélylinkek, sötét mód, mobil nézet, papírhű számlakép és NAV XML-néző.
 
 > ### ▶ Élő demó: **[szilagyi-mini-erp.vercel.app](https://szilagyi-mini-erp.vercel.app)**
-> Telepítés és regisztráció nélkül kattintható. Rögzíts rendelést, fizesd ki, nézd meg a NAV-számlát, mondj le – a demóadatbázis óránként friss bemutató adatokkal újraépül.
+> Telepítés és regisztráció nélkül kattintható, a demóadatbázis óránként friss bemutató adatokkal újraépül. Az ingyenes tárhely példányai külön adatbázissal futnak, ezért egy frissen rögzített tétel nem mindig látszik a következő kattintásra ([részletek](#élő-demó-a-vercelen)); a teljes folyamat helyben, egy paranccsal fut.
 
 [![Tesztek](https://github.com/waxeee57-cyber/minierp/actions/workflows/tests.yml/badge.svg)](https://github.com/waxeee57-cyber/minierp/actions/workflows/tests.yml)
 
@@ -29,7 +29,7 @@ Munkaminta · Szilágyi Roland · waxeee57@gmail.com
 | **AI** | [Laravel AI SDK](https://laravel.com/ai) (`laravel/ai`): eszközhasználó ERP-asszisztens és strukturált kimenetű ügyfél-összefoglaló, szolgáltató-függetlenül |
 | **Előrejelzés** | Kifogyási dátum és javasolt rendelési mennyiség a készletmozgás-naplóból, prediktív riasztással |
 | **Webshop-integráció** | Shopify és WooCommerce webhook HMAC-aláírással, idempotens átvétellel · Google Merchant Center és Árukereső XML-feed · UTM-alapú bevételi riport |
-| **Tesztek** | 90 PHPUnit-teszt (~1300 assertion): feature, unit, modulhatár-, 300 lépéses invariáns- és bemutatóadat-konzisztencia-teszt · 10 böngészős Playwright-teszt asztali és mobil nézetben. CI: GitHub Actions, Pint |
+| **Tesztek** | 90 PHPUnit-teszt (~1300 assertion): feature, unit, modulhatár-, 300 lépéses invariáns- és bemutatóadat-konzisztencia-teszt · 10 böngészős Playwright-teszt asztali és mobil nézetben. CI: GitHub Actions (SQLite és PostgreSQL 16), Pint |
 | **Felület** | Lighthouse (mobil emuláció, 5 fő oldal): Accessibility **100**, Best Practices **100**, SEO **100**, CLS ≤ 0,085 |
 
 ## Indítás
@@ -55,9 +55,9 @@ A demó a `main` ág minden pusholásakor automatikusan frissül. A Vercel függ
 
 [`vercel.json`](vercel.json): [`vercel-php`](https://github.com/vercel-community/php) futtatókörnyezet, a Vite-build statikusan, `immutable` gyorsítótárral. A Laravel AI SDK által behúzott AWS SDK-t a build a `BedrockRuntime`/`Sts` szolgáltatásra szűkíti, hogy a függvény beférjen a méretkorlátba.
 
-Korlát: ha a Vercel több példányt indít, azok külön demó-adatbázissal dolgoznak. Éles üzemhez MySQL/PostgreSQL kell, az alkalmazás ehhez nem igényel kódmódosítást.
+Tudatos korlát: a Vercel párhuzamos kéréseknél több példányt indít, és mindegyik saját SQLite-fájllal dolgozik, így az írások nem közösek (olvasásra a demó teljes értékű). Éles üzemhez közös MySQL vagy PostgreSQL kell; a teljes tesztsor a CI-ban PostgreSQL 16-on is fut, kódmódosítás nem kell hozzá, csak a `DB_*` változók.
 
-A böngészős tesztek az élő demó ellen is futnak: `E2E_BASE_URL=https://szilagyi-mini-erp.vercel.app npm run e2e`
+A böngészős tesztek bármely környezet ellen futtathatók: `E2E_BASE_URL=https://… npm run e2e`
 
 ## 5 perc alatt a kódban
 

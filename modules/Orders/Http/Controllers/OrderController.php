@@ -28,8 +28,8 @@ class OrderController extends Controller
         $scoped = Order::query()
             ->when($request->integer('customer_id'), fn ($q, $id) => $q->where('customer_id', $id))
             ->when($request->string('search')->toString(), function ($q, string $term) {
-                $q->where(fn ($q) => $q->where('number', 'like', "%{$term}%")
-                    ->orWhereHas('customer', fn ($c) => $c->where('company', 'like', "%{$term}%")->orWhere('name', 'like', "%{$term}%")));
+                $q->where(fn ($q) => $q->whereLike('number', "%{$term}%")
+                    ->orWhereHas('customer', fn ($c) => $c->whereLike('company', "%{$term}%")->orWhereLike('name', "%{$term}%")));
             });
 
         $counts = (clone $scoped)->toBase()->selectRaw('status, count(*) as n')->groupBy('status')->pluck('n', 'status')->map(fn ($n) => (int) $n);

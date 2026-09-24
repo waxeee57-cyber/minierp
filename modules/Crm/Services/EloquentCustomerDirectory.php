@@ -16,7 +16,7 @@ class EloquentCustomerDirectory implements CustomerDirectory
     public function search(string $term, int $limit = 5): Collection
     {
         return Customer::query()
-            ->where(fn ($q) => $q->where('name', 'like', "%{$term}%")->orWhere('company', 'like', "%{$term}%")->orWhere('city', 'like', "%{$term}%"))
+            ->where(fn ($q) => $q->whereLike('name', "%{$term}%")->orWhereLike('company', "%{$term}%")->orWhereLike('city', "%{$term}%"))
             ->limit($limit)
             ->get(['id', 'name', 'company', 'city'])
             ->map(fn (Customer $c) => $c->only(['id', 'name', 'company', 'city']));

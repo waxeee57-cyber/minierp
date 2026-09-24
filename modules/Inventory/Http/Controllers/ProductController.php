@@ -17,7 +17,7 @@ class ProductController extends Controller
         $products = Product::query()
             ->when($request->boolean('low_stock'), fn ($q) => $q->lowStock())
             ->when($request->string('search')->toString(), function ($q, string $term) {
-                $q->where(fn ($q) => $q->where('name', 'like', "%{$term}%")->orWhere('sku', 'like', "%{$term}%"));
+                $q->where(fn ($q) => $q->whereLike('name', "%{$term}%")->orWhereLike('sku', "%{$term}%"));
             })
             ->orderBy('name')
             ->paginate(min($request->integer('per_page', 25), 100));

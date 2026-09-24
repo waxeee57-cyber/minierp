@@ -18,9 +18,9 @@ class CustomerController extends Controller
         $customers = Customer::query()
             ->withCount('openTasks')
             ->when($request->string('search')->toString(), function ($q, string $term) {
-                $q->where(fn ($q) => $q->where('name', 'like', "%{$term}%")
-                    ->orWhere('company', 'like', "%{$term}%")
-                    ->orWhere('email', 'like', "%{$term}%"));
+                $q->where(fn ($q) => $q->whereLike('name', "%{$term}%")
+                    ->orWhereLike('company', "%{$term}%")
+                    ->orWhereLike('email', "%{$term}%"));
             })
             ->orderBy('company')
             ->orderBy('name')
