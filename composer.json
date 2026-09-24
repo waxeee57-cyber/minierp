@@ -80,12 +80,19 @@
         ],
         "lint": [
             "vendor/bin/pint --test"
+        ],
+        "vercel": [
+            "Aws\\Script\\Composer\\Composer::removeUnusedServices"
         ]
     },
     "extra": {
         "laravel": {
             "dont-discover": []
-        }
+        },
+        "aws/aws-sdk-php": [
+            "BedrockRuntime",
+            "Sts"
+        ]
     },
     "config": {
         "optimize-autoloader": true,
