@@ -8,7 +8,12 @@ Rendelés-, készlet-, ügyfél- és számlakezelő rendszer egy kitalált iroda
 - **Természetes nyelven kérdezhető** a Laravel hivatalos AI SDK-ján keresztül – API-kulcs nélkül is, szabályalapú módban.
 - **Termékszintű felülettel:** ⌘K parancspaletta, mélylinkek, sötét mód, mobil nézet, papírhű számlakép és NAV XML-néző.
 
-> Munkaminta az XTRADEVELOPERS Kft. Fullstack fejlesztő pozíciójára · Szilágyi Roland · waxeee57@gmail.com
+> ### ▶ Élő demó: **[szilagyi-mini-erp.vercel.app](https://szilagyi-mini-erp.vercel.app)**
+> Telepítés és regisztráció nélkül kattintható. Rögzíts rendelést, fizesd ki, nézd meg a NAV-számlát, mondj le – a demóadatbázis óránként friss bemutató adatokkal újraépül.
+
+[![Tesztek](https://github.com/waxeee57-cyber/minierp/actions/workflows/tests.yml/badge.svg)](https://github.com/waxeee57-cyber/minierp/actions/workflows/tests.yml)
+
+Munkaminta · Szilágyi Roland · waxeee57@gmail.com
 
 ![Bemutató: rendelés, fizetés után automatikus NAV-számla, készlet-előrejelzés, ügyfél-idővonal](docs/demo.gif)
 
@@ -39,6 +44,20 @@ php artisan serve         # http://localhost:8000
 Tesztek: `composer test` · Böngészős tesztek: `npm run e2e` · Kódstílus: `composer lint` · ERD: `composer erd`
 
 Az AI-funkciókhoz elég egy kulcs a `.env`-ben (`ANTHROPIC_API_KEY=…`). **Kulcs nélkül is minden működik:** az asszisztens és az ügyfél-összefoglaló szabályalapú módra vált, ugyanazokkal a csak olvasó eszközökkel, és a felület mindig jelzi, melyik mód válaszolt.
+
+### Élő demó a Vercelen
+
+A demó a `main` ág minden pusholásakor automatikusan frissül. A Vercel függvények fájlrendszere csak olvasható, ezért az [`api/index.php`](api/index.php) belépő:
+
+- minden írható útvonalat (storage, cache-fájlok, SQLite) a `/tmp` alá irányít;
+- hidegindításkor és óránként külön folyamatban migrál és seedel egy ideiglenes fájlba, majd atomikusan a helyére nevezi, így kérés sosem lát félkész adatbázist;
+- a repóban nincs titok: `APP_KEY` hiányában példányonként véletlen kulcsot készít (az API állapotmentes).
+
+[`vercel.json`](vercel.json): [`vercel-php`](https://github.com/vercel-community/php) futtatókörnyezet, a Vite-build statikusan, `immutable` gyorsítótárral. A Laravel AI SDK által behúzott AWS SDK-t a build a `BedrockRuntime`/`Sts` szolgáltatásra szűkíti, hogy a függvény beférjen a méretkorlátba.
+
+Korlát: ha a Vercel több példányt indít, azok külön demó-adatbázissal dolgoznak. Éles üzemhez MySQL/PostgreSQL kell, az alkalmazás ehhez nem igényel kódmódosítást.
+
+A böngészős tesztek az élő demó ellen is futnak: `E2E_BASE_URL=https://szilagyi-mini-erp.vercel.app npm run e2e`
 
 ## 5 perc alatt a kódban
 
@@ -142,6 +161,15 @@ A `Channels` modul egy webshop mögötti ERP tipikus feladatait oldja meg:
 - **Marketing-riport** (`GET /api/channels/report`): bevétel csatornánként és UTM-forrásonként. A Shopify a `landing_site` URL-jéből, a WooCommerce a beépített rendelés-attribúcióból (`_wc_order_attribution_utm_*`) adja a forrást.
 
 Beállítás a `.env`-ben: `SHOPIFY_WEBHOOK_SECRET`, `WOOCOMMERCE_WEBHOOK_SECRET`, `ERP_SHOP_URL`.
+
+**Kipróbálás az élő demón** – aláírt Shopify-rendelés, fizetve, Google Ads forrással (a demó titka `demo-shopify-secret`). Másodszori futtatásra `"duplicate": true` jön vissza, új rendelés nem keletkezik:
+
+```bash
+BODY='{"id":9001001,"name":"#1001","email":"teszt.vevo@example.hu","financial_status":"paid","landing_site":"/?utm_source=google&utm_medium=cpc","billing_address":{"first_name":"Anna","last_name":"Kovács","country_code":"HU","zip":"1051","city":"Budapest","address1":"Váci utca 1."},"line_items":[{"sku":"IT-1008","quantity":2}]}'
+SIG=$(printf '%s' "$BODY" | openssl dgst -sha256 -hmac 'demo-shopify-secret' -binary | base64)
+curl https://szilagyi-mini-erp.vercel.app/api/channels/shopify/orders \
+  -H 'Content-Type: application/json' -H "X-Shopify-Hmac-Sha256: $SIG" -d "$BODY"
+```
 
 ## Kifogyási előrejelzés
 
@@ -264,6 +292,6 @@ A parancs a modul `draft.yaml`-jéből a modul névterébe generál modellt, mig
 
 ## Fejlesztés
 
-AI-asszisztált fejlesztéssel készült (Claude), ahogy a hirdetés is kéri. Az üzleti szabályokat és a modulhatárokat a tesztek rögzítik, így minden döntés ellenőrizhető.
+AI-asszisztált fejlesztéssel készült (Claude). Az üzleti szabályokat és a modulhatárokat a tesztek rögzítik, így minden döntés ellenőrizhető.
 
 Minden cég, személy és adószám kitalált.
